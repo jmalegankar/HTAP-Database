@@ -36,8 +36,9 @@ class Table:
     #as for this milestone everything is in main memory and that buffferpool is for dragging
     #data from disk to RAM and persistentning it for quicker access if reused
 
-    #How should we init the Page.py here?
-
+    #How should we init the Page.py here? We need to index on Key actually so
+    #match the key to a page So how are we storing our pages? in an array? Linked list?
+    #array of linked lists maybe im thinking?
 
     """
     :param name: string         #Table name
