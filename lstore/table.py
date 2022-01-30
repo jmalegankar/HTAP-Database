@@ -6,7 +6,9 @@ RID_COLUMN = 1
 TIMESTAMP_COLUMN = 2
 SCHEMA_ENCODING_COLUMN = 3
 
-
+# We are storing RID as int probably 9 digits, it will be assigned
+# based on where the actualy key is stored and will be linked to the key via
+# index
 class Record:
 
     def __init__(self, rid, key, columns):
