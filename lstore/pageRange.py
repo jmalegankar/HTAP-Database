@@ -1,8 +1,13 @@
 from lstore.page import Page
 class PageRange:
     def __init__(self, columns):
+<<<<<<< Updated upstream
         self.num_of_columns = columns + 4
         self.ARR_of_base_pages=[]
+=======
+        self.num_of_colmuns = columns + 4
+        self.arr_of_base_pages=[]
+>>>>>>> Stashed changes
         self.num_tails=0
         self.create_a_new_base_page(True)
 
@@ -11,8 +16,8 @@ class PageRange:
         # no reason for this it is arbitary we can change this at a whim tbh whatever
         # we want
         # this will probabaly be used one level up 
-    def PageRange_has_capacity(self):
-        return len(self.ARR_of_base_pages) < 6
+    def pageRange_has_capacity(self):
+        return len(self.arr_of_base_pages) < 6
     
     #PC
     # this basically checks if the base page has room for new info again probably
@@ -20,8 +25,8 @@ class PageRange:
     # set of base pages
     # Can also check if tail pages are full just pass the len of the array might
     # include a function for that too for more abstraction / encapsulation if needed
-    def Physical_page_is_full(self, Base_Page_number):
-        return self.ARR_of_base_pages[Base_Page_number][0].has_capacity()
+    def physical_page_is_full(self, base_page_number):
+        return self.arr_of_base_pages[base_page_number][0].has_capacity()
 
     # PC
     # this creates a base page of num_colums given by user plus the preset columns that we need
@@ -29,15 +34,15 @@ class PageRange:
     # this creates that base page and slaps it behind any other base pages
     # and behind any created tail pages or if we need a TAIL
     # pass it true and it will create a tail
-    def create_a_new_base_page(self, ISTAIL=False):
+    def create_a_new_base_page(self, isTail=False):
         base_page=[]
         for col_num in range(self.num_of_colmuns):
             base_page.append(Page())
-        if ISTAIL:
-            self.ARR_of_base_pages.append(base_page)
+        if isTail:
+            self.arr_of_base_pages.append(base_page)
             self.num_tails += 1
         else:
-            self.ARR_of_base_pages.insert(len(self.ARR_of_base_pages)-self.num_tails, base_page)
+            self.arr_of_base_pages.insert(len(self.arr_of_base_pages) - self.num_tails, base_page)
         pass
 
     # UNDERCONSTRUCTION 
@@ -45,7 +50,7 @@ class PageRange:
 
     # this kind of works as shown in the myTester but not the best implmentation yet probably
     def write(self, Base_num, rec):
-        temprec=self.ARR_of_base_pages[Base_num]
+        temprec=self.arr_of_base_pages[Base_num]
         i=0
         for x in range(4,self.num_of_colmuns):
             temprec[x].write(rec[i])
@@ -57,7 +62,7 @@ class PageRange:
 
     # alsoooo works but not too sure if it is the best way to do it
     def GET_record(self, Base_num, col_num, arr_off_set):
-        temprec=self.ARR_of_base_pages[Base_num]
+        temprec=self.arr_of_base_pages[Base_num]
         target_rec=[]
         for x in col_num:
             target_rec.append(temprec[x].get(arr_off_set))
