@@ -1,13 +1,8 @@
 from lstore.page import Page
 class PageRange:
     def __init__(self, columns):
-<<<<<<< Updated upstream
         self.num_of_columns = columns + 4
         self.ARR_of_base_pages=[]
-=======
-        self.num_of_colmuns = columns + 4
-        self.arr_of_base_pages=[]
->>>>>>> Stashed changes
         self.num_tails=0
         self.create_a_new_base_page(True)
 
