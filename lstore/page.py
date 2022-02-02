@@ -44,3 +44,28 @@ class Page:
     def get(self, rec_num):
         assert 0 <= rec_num < 512
         return int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], "big", signed=True)
+        
+    #pass in rec number we want to change for updates
+    def set(self, rec_num, value):
+        assert 0 <= rec_num < 512
+        self.data[rec_num * 8 : rec_num * 8 + 8] = \
+        value.to_bytes(8, 'big', signed=True)
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
