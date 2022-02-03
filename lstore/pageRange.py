@@ -1,55 +1,48 @@
-from lstore.page import Page
+from lstore.basepage import BasePage
+from lstore.tabel import Record
+from lstore.parser import create_rid
+
 class PageRange:
     def __init__(self, columns):
-        self.num_of_columns = columns + 4
-        self.arr_of_pages=[]
-        self.num_tails=0
+        self.num_of_columns = columns
+        self.arr_of_base_pages=[]
+        self.arr_of_tail_pages=[]
         # self.create_a_page(True)
 
-        # What I have done PC
-        # page range is full if we have more than 6 base pages
-        # no reason for this it is arbitary we can change this at a whim tbh whatever
-        # we want
-        # this will probabaly be used one level up 
+        """
+    Checks if page range has capacity, which we need to define 8????
+        """
     def pageRange_has_capacity(self):
-        return len(self.arr_of_pages) < 6
+        return len(self.arr_of_base_pages) < 8
     
-    #PC
-    # this basically checks if the base page has room for new info again probably
-    # used by the next upper abstraction to check if there is room and then creation of another
-    # set of base pages
-    # Can also check if tail pages are full just pass the len of the array might
-    # include a function for that too for more abstraction / encapsulation if needed
-    def physical_page_is_full(self, base_page_number):
-        return self.arr_of_pages[base_page_number][0].has_capacity()
-
-    # PC
-    # this creates a base page of num_colums given by user plus the preset columns that we need
-    # see on top of table as to what those 4 are tbh 
-    # this creates that base page and slaps it behind any other base pages
-    # and behind any created tail pages or if we need a TAIL
-    # pass it true and it will create a tail
-    def create_a_new_base_page(self, isTail=False):
-        base_page=[]
-        for col_num in range(self.num_of_colmuns):
-            base_page.append(Page())
+        """
+    
+        """
+    def is_page_full(self, page_number, isTail=False):
         if isTail:
-            self.arr_of_pages.append(base_page)
-            self.num_tails += 1
+                return self.arr_of_tail_pages[page_number].has_capacity()
         else:
-            self.arr_of_pages.insert(len(self.arr_of_pages) - self.num_tails, base_page)
-        pass
+            return self.arr_of_base_pages[page_number].has_capacity()
+          
+        """
+    creates a base page or tail page
+        """
+
+    def create_a_new_page(self, isTail=False):
+        if isTail:
+            self.arr_of_tail_pages.append(BasePage(self.num_of_columns))
+            return len(self.arr_of_tail_pages) - 1
+        else:
+            assert self.pageRange_has_capacity()
+            self.arr_of_base_pages.append(BasePage(self.num_of_columns))
+            return len(self.arr_of_base_pages) - 1
 
     # UNDERCONSTRUCTION 
     # probaly needs our RID schema first before i would even bother with this tbh
 
     # this kind of works as shown in the myTester but not the best implmentation yet probably
-    def write(self, base_num, rec):
-        temprec=self.arr_of_pages[base_num]
-        i=0
-        for x in range(4,self.num_of_colmuns):
-            temprec[x].write(rec[i])
-            i +=1
+    def write(self, *colunms):
+                assert len(columns) == self.num_of_columns
         pass
 
     #UNDERCONSTRUCTION
@@ -57,11 +50,7 @@ class PageRange:
 
     # alsoooo works but not too sure if it is the best way to do it
     def get_record(self, base_num, col_num, arr_off_set):
-        temprec=self.arr_of_pages[base_num]
-        target_rec=[]
-        for x in col_num:
-            target_rec.append(temprec[x].get(arr_off_set))
-        return target_rec
+            pass
 
     # oof
     def update():
