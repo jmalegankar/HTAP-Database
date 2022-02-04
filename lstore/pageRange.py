@@ -70,19 +70,39 @@ class PageRange:
             return self.arr_of_tail_pages[page_number].get_user_cols(offset)
         else:
             return self.arr_of_base_pages[page_number].get_user_cols(offset)
+            # my start on indirection traverse
+            #rec=self.arr_of_base_pages[page_number].get_user_cols(offset)
+            #return self.traverse_tail(rec)
     
     
     """
     Get a record given RID
     """
 
-    def get_withRID(self, rid):
+    def get_withRID(self, rid, isTail=False):
         page_number = get_page_number(rid)
         offset = get_physical_page_offset(rid)
-        return self.get(page_number, offset)
+        return self.get(page_number, offset, isTail)
 
     # oof
-    def update():
-        pass
+    def update(self, rid, *columns):
+        assert len(columns) == self.num_of_columns
+        # Data OK, create new RID for this record
 
+        if self.is_page_full(self.tail_page_number, True):
+            self.create_a_new_page(True)
+
+
+        # i assumed type was the type of page so 1 for tail
+        tail_rid = create_rid(1, self.range_number, self.tail_page_number, self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num())
+        record = Record(tail_rid, -1, list(columns))
+
+        # need page number and offset to access old rid of basepage and set a new one
+        page_number = get_page_number(rid)
+        offset = get_physical_page_offset(rid)
+
+        self.arr_of_tail_pages[self.tail_page_number].update(self.arr_of_base_pages[page_number].get(offset,0),record)
+        self.arr_of_base_pages[page_number].set(offset,tail_rid,0) # set base page to new tail page rid
+
+        return tail_rid
         
