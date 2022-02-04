@@ -2,7 +2,7 @@ import unittest
 from lstore.pageRange import PageRange
 from lstore.basepage import BasePage
 from lstore.table import Record
-from lstore.parser import get_physical_page_offset
+from lstore.parser import *
 import time
 
 class TestPages(unittest.TestCase):
@@ -47,6 +47,59 @@ class TestPages(unittest.TestCase):
 
 	def test_parser(self):
 		self.assertEqual(get_physical_page_offset(123456789), 789)
+		self.assertEqual(get_page_type(123456789), 1)
+		self.assertEqual(get_page_range_number(123456789), 23)
+		self.assertEqual(get_page_number(123456789), 456)
+		
+		self.assertEqual(get_page_type(create_rid(1, 0, 0, 0)), 1)
+		self.assertEqual(get_page_range_number(create_rid(0, 23, 0, 0)), 23)
+		self.assertEqual(get_page_number(create_rid(0, 0, 456, 0)), 456)
+		self.assertEqual(get_physical_page_offset(create_rid(0, 0, 0, 789)), 789)
+		self.assertEqual(create_rid(1, 23, 456, 789), 123456789)
+	
+	
+	def test_page_range(self):
+		rids = []
+		
+		page_range_0 = PageRange(2, 0) # 2 col, id = 0
+		page_range_1 = PageRange(2, 1) # 2 col, id = 1
+		
+		self.assertEqual(page_range_0.write(1, 2), 0) # PageRange 0 first record ID should be 0
+		self.assertEqual(page_range_1.write(1, 2), 1000000) # PageRange 1 first record ID should be 1000000
+		self.assertEqual(page_range_0.write(3, 4), 1) # PageRange 0 second record ID should be 1
+		self.assertEqual(page_range_1.write(3, 4), 1000001) # PageRange 1 second record ID should be 1000001
+		
+		self.assertEqual(page_range_0.get(0, 0), [1, 2])
+		self.assertEqual(page_range_0.get(0, 1), [3, 4])
+		
+		# page range has 2 records, it should create a new base page if we insert 511 more records
+		for i in range(2, 512):
+			self.assertEqual(page_range_0.write(i, i ** 2), i)
+			rids.append(i)
+	
+		# we have 512 records now, but it should only have 1 page
+		self.assertEqual(len(page_range_0.arr_of_base_pages), 1)
+		# next should triggle a new page, 513 records
+		self.assertEqual(page_range_0.write(512, 262144), 1000)
+		rids.append(1000)
+		# check if length of base page array is 2
+		self.assertEqual(len(page_range_0.arr_of_base_pages), 2)
+		
+		for i in range(513, 4096):
+			rids.append(page_range_0.write(i, i ** 2))
+		
+		for i in range(2, 4096):
+			self.assertEqual(page_range_0.get(i // 512, i % 512), [i, i ** 2])
+
+		for i, rid in enumerate(rids):
+			self.assertEqual(page_range_0.get_withRID(rid), [(i+2), (i+2) ** 2])
+		
+		with self.assertRaises(Exception):
+			# pagerange is full
+			page_range_0.write(0, 0)
+			
+		# awesome, all data are correct!
+		
 
 if __name__ == '__main__':
 	unittest.main()

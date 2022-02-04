@@ -18,6 +18,9 @@ class BasePage:
 		The rest are the columns provided by the user
 		"""
 		self.phys_pages = [Page() for i in range(self.num_columns)]
+	
+	def __str__(self):
+		return "Basepage > " + str(self.num_records) + " records"
 
 	"""
 	PageRange needs to check has_capacity() before calling the write() function
@@ -51,6 +54,10 @@ class BasePage:
 	def get_cols(self, rec_num, columns):
 		assert 0 <= rec_num < self.num_records and len(columns) == self.num_user_columns
 		return [None if columns[i] == 0 else self.get(rec_num, 4 + i) for i in range(len(columns))]
+	
+	
+	def get_user_cols(self, rec_num):
+		return [self.get(rec_num, 4 + i) for i in range(self.num_user_columns)]
 
 	"""
 	Write a record to the physical page

@@ -1,57 +1,88 @@
 from lstore.basepage import BasePage
-from lstore.tabel import Record
-from lstore.parser import create_rid
+from lstore.table import Record
+from lstore.parser import *
 
 class PageRange:
-    def __init__(self, columns):
+
+    def __init__(self, columns, range_number):
         self.num_of_columns = columns
         self.arr_of_base_pages=[]
         self.arr_of_tail_pages=[]
-        # self.create_a_page(True)
+        self.range_number = range_number
+        self.base_page_number = -1
+        self.tail_page_number = -1
 
-        """
+    def __str__(self):
+        return "PageRange > " + str(self.base_page_number + 1) + " base pages, " + str(self.tail_page_number + 1) + " tail pages"
+
+    """
     Checks if page range has capacity, which we need to define 8????
-        """
+    """
+
     def pageRange_has_capacity(self):
         return len(self.arr_of_base_pages) < 8
     
-        """
-    
-        """
     def is_page_full(self, page_number, isTail=False):
+        if page_number == -1:
+            """ We don't have any page yet """
+            return True
+
         if isTail:
-                return self.arr_of_tail_pages[page_number].has_capacity()
+            return not self.arr_of_tail_pages[page_number].has_capacity()
         else:
-            return self.arr_of_base_pages[page_number].has_capacity()
+            return not self.arr_of_base_pages[page_number].has_capacity()
           
-        """
+    """
     creates a base page or tail page
-        """
+    """
 
     def create_a_new_page(self, isTail=False):
         if isTail:
             self.arr_of_tail_pages.append(BasePage(self.num_of_columns))
-            return len(self.arr_of_tail_pages) - 1
+            self.tail_page_number += 1
         else:
             assert self.pageRange_has_capacity()
             self.arr_of_base_pages.append(BasePage(self.num_of_columns))
-            return len(self.arr_of_base_pages) - 1
+            self.base_page_number += 1
 
-    # UNDERCONSTRUCTION 
-    # probaly needs our RID schema first before i would even bother with this tbh
+    """
+    Write a record, given the columns data
+    Return Record ID for table to build the index
+    """
 
-    # this kind of works as shown in the myTester but not the best implmentation yet probably
-    def write(self, *colunms):
-                assert len(columns) == self.num_of_columns
-        pass
+    def write(self, *columns):
+        assert len(columns) == self.num_of_columns
+        # Data OK, create new RID for this record
+        if self.is_page_full(self.base_page_number):
+            self.create_a_new_page()
+    
+        rid = create_rid(0, self.range_number, self.base_page_number, self.arr_of_base_pages[self.base_page_number].get_next_rec_num())
+        record = Record(rid, -1, list(columns))
+        self.arr_of_base_pages[self.base_page_number].write(record)
+        return rid
 
-    #UNDERCONSTRUCTION
-    # lol also need some more thought on how to return more records
+    """
+    Get a record given page_number and offset
+    """
+    
+    def get(self, page_number, offset, isTail=False):
+        if isTail:
+            return self.arr_of_tail_pages[page_number].get_user_cols(offset)
+        else:
+            return self.arr_of_base_pages[page_number].get_user_cols(offset)
+    
+    
+    """
+    Get a record given RID
+    """
 
-    # alsoooo works but not too sure if it is the best way to do it
-    def get_record(self, base_num, col_num, arr_off_set):
-            pass
+    def get_withRID(self, rid):
+        page_number = get_page_number(rid)
+        offset = get_physical_page_offset(rid)
+        return self.get(page_number, offset)
 
     # oof
     def update():
         pass
+
+        
