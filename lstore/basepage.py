@@ -19,8 +19,21 @@ class BasePage:
 		"""
 		self.phys_pages = [Page() for i in range(self.num_columns)]
 	
+	"""
+	Debug Only
+	"""
+
 	def __str__(self):
-		return "Basepage > " + str(self.num_records) + " records"
+		string = 'Current size: {}/512 records\n'.format(self.num_records)
+		string += '=' * 15 + '\n'
+		if self.num_records > 0:
+			for i in range(self.num_records):
+				for j in range(self.num_columns):
+					string += '{}\t\t'.format(self.get(i, j))
+				string += '\n'
+		else:
+			string += 'No Record\n'
+		return string
 
 	"""
 	PageRange needs to check has_capacity() before calling the write() function

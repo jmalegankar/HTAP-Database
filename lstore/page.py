@@ -26,6 +26,20 @@ class Page:
     def __init__(self):
         self.num_records = 0
         self.data = bytearray(4096)
+    
+    """
+    Debug Only
+    """
+
+    def __str__(self):
+        string = 'Current size: {}/512 records\n'.format(self.num_records)
+        string += '=' * 5 + '\n'
+        if self.num_records > 0:
+            for i in range(self.num_records):
+                string += '{}: {}\n'.format(i, self.get(i))
+        else:
+            string += 'Empty\n'
+        return string
 
     def has_capacity(self):
         return self.num_records < 512

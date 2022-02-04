@@ -2,6 +2,7 @@ import unittest
 from lstore.pageRange import PageRange
 from lstore.basepage import BasePage
 from lstore.table import Record
+from lstore.page import Page
 from lstore.parser import *
 import time
 
@@ -101,12 +102,14 @@ class TestPages(unittest.TestCase):
 		# awesome, all data are correct!
 	
 	def test_tail(self):
-		page_range_0 = PageRange(2, 1) # 2 col, id = 0
+		page_range_0 = PageRange(2, 0) # 2 col, id = 0
 
-		self.assertEqual(page_range_0.write(1, 2), 1000000) # PageRange 0 first record ID should be 0
+		self.assertEqual(page_range_0.write(1, 2), 0) # PageRange 0 first record ID should be 0
 		# quick test to see that tail holds x update and that base page now points to tail rid
-		print(page_range_0.update(0, *[1,50]))
-		print(page_range_0.arr_of_base_pages[0].phys_pages[0].get(0))
+		page_range_0.update(0, *[1,50])
+		page_range_0.arr_of_base_pages[0].phys_pages[0].get(0)
+		
+		print('\n' + str(page_range_0))
 
 
 if __name__ == '__main__':

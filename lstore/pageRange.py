@@ -12,8 +12,29 @@ class PageRange:
         self.base_page_number = -1
         self.tail_page_number = -1
 
+    """
+    Debug Only
+    """
+
     def __str__(self):
-        return "PageRange > " + str(self.base_page_number + 1) + " base pages, " + str(self.tail_page_number + 1) + " tail pages"
+        string = 'Base: {}/8, tail: {}\n'.format(self.range_number, self.base_page_number + 1, self.tail_page_number + 1)
+        string += '=' * 25 + '\n'
+        string += 'BasePages:\n'
+        if self.base_page_number > -1:
+            for index, base_page in enumerate(self.arr_of_base_pages):
+                string += 'BasePage {}\n'.format(index)
+                string += str(base_page)
+        else:
+            string += 'Empty\n'
+
+        string += '\nTailPages:\n'
+        if self.tail_page_number > -1:
+            for index, tail_page in enumerate(self.arr_of_tail_pages):
+                string += 'TailPage {}\n'.format(index)
+                string += str(tail_page)
+        else:
+            string += 'Empty\n'
+        return string
 
     """
     Checks if page range has capacity, which we need to define 8????
