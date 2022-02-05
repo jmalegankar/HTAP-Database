@@ -3,6 +3,7 @@ RID format: abbcccddd
 	a: page type
 		0: base page
 		1: tail page
+		2: invalid record (deleted)
 	bb: page range number
 	ccc: page number
 	ddd: physical page offset (rec_num)

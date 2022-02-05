@@ -1,5 +1,5 @@
 from lstore.page import Page
-from lstore.table import Record
+from lstore.record import Record
 import time
 
 class BasePage:
@@ -67,6 +67,7 @@ class BasePage:
 		# quicker setter to access page set
 	def set(self, rec_num, value, column):
 		return self.phys_pages[column].set(rec_num,value)
+
 	"""
 	Get multiple col
 	rec_num: record number in integer
@@ -134,7 +135,6 @@ class BasePage:
 		self.phys_pages[3].write(schema)
 		self.num_records += 1
 
-		pass
 	
 	def tail_update(self,offset,columns):
 		assert self.has_capacity() and len(columns) == self.num_user_columns

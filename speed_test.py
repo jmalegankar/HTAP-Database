@@ -26,6 +26,7 @@ sys.setrecursionlimit(99999)
 start_update = time.process_time()
 for i in range(1000000):
 	page_range_0.update(0, i, None, None)
+page_range_0.update(0, i, 10, None)
 end_update = time.process_time()
 print('1M Update Took: ', end_update - start_update)
 
@@ -38,5 +39,4 @@ page_range_0.get_withRID(0)
 end = time.process_time()
 print('1M Update Lookup Took: ', end - start)
 
-#print(page_range_0)
-
+print(page_range_0)

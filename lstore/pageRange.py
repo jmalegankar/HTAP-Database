@@ -1,5 +1,5 @@
 from lstore.basepage import BasePage
-from lstore.table import Record
+from lstore.record import Record
 from lstore.parser import *
 
 class PageRange:
@@ -11,6 +11,7 @@ class PageRange:
         self.range_number = range_number
         self.base_page_number = -1
         self.tail_page_number = -1
+        self.num_records = 0
 
     """
     Debug Only
@@ -80,6 +81,7 @@ class PageRange:
         rid = create_rid(0, self.range_number, self.base_page_number, self.arr_of_base_pages[self.base_page_number].get_next_rec_num())
         record = Record(rid, -1, list(columns))
         self.arr_of_base_pages[self.base_page_number].write(record)
+        self.num_records += 1
         return rid
 
     """
@@ -108,6 +110,9 @@ class PageRange:
         # base case if next rid is last tail it should point 0
         # THIS wil change when we decide out indirection default!
         # or if schema is updated
+        if next_rid == 200000000: # we set indirection to 200000000 when we deleted the record
+            return None
+    
         if next_rid != 0:
             next_schema=[int(i) for i in list('{0:0b}'.format(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3)))]
 
@@ -126,6 +131,7 @@ class PageRange:
     
     def check_schema(self, schema):
         return list(bytes(schema)) == (2 ** self.num_of_columns)-1
+
     """
     Get a record given RID
     """
@@ -134,6 +140,23 @@ class PageRange:
         page_number = get_page_number(rid)
         offset = get_physical_page_offset(rid)
         return self.get(page_number, offset, isTail)
+
+    """
+    Delete a record given RID
+    """
+    def delete_withRID(self, rid):
+        base_page_number = get_page_number(rid)
+        base_offset = get_physical_page_offset(rid)
+        base_indir = self.arr_of_base_pages[base_page_number].get(base_offset, 0)
+        
+        self.arr_of_base_pages[base_page_number].set(base_offset, 200000000, 0) # set indir to 200000000
+        if base_indir > 0:
+            # Need to override base and tail's RID
+            tail_page_number = get_page_number(base_indir)
+            tail_offset = get_physical_page_offset(base_indir)
+            
+            self.arr_of_tail_pages[tail_page_number].set(tail_offset, 200000000, 0) # set indir to 200000000
+
 
     # adds a tail page, return the tail id of the new page
     # needs a base RID to update and columns of data.

@@ -1,7 +1,7 @@
 import unittest
 from lstore.pageRange import PageRange
 from lstore.basepage import BasePage
-from lstore.table import Record
+from lstore.record import Record
 from lstore.page import Page
 from lstore.parser import *
 import time
@@ -118,9 +118,49 @@ class TestPages(unittest.TestCase):
 		page_range_0.update(0, *[10000,None,None])
 		#page_range_0.traverse_ind(page_range_0.get_withRID(0),0,0)
 		#page_range_0.arr_of_base_pages[0].phys_pages[0].get(0)
-		print('\n' + str(page_range_0))
-		print(page_range_0.get_withRID(0))
+#		print('\n' + str(page_range_0))
+#		print(page_range_0.get_withRID(0))
 
-
+	def test_delete(self):
+		page_range_0 = PageRange(3, 0) # 2 col, id = 0
+		self.assertEqual(page_range_0.write(1, 2, 3), 0) # PageRange 0 first record ID should be 0
+		self.assertEqual(page_range_0.get_withRID(0), [1, 2, 3])
+	
+		page_range_0.update(0, 4, 5, 6)
+		self.assertEqual(page_range_0.get_withRID(0), [4, 5, 6])
+	
+		page_range_0.update(0, 7, 8, None)
+		self.assertEqual(page_range_0.get_withRID(0), [7, 8, 6])
+		page_range_0.delete_withRID(0)
+		
+		self.assertEqual(page_range_0.write(10, 20, 30), 1)
+		self.assertEqual(page_range_0.get_withRID(1), [10, 20, 30])
+		
+		page_range_0.update(1, 40, 50, 60)
+		self.assertEqual(page_range_0.get_withRID(1), [40, 50, 60])
+		
+		page_range_0.delete_withRID(1)
+		self.assertEqual(page_range_0.get_withRID(0), None)
+		self.assertEqual(page_range_0.get_withRID(1), None)
+		
+		rids = []
+		for i in range(4094):
+			rids.append(page_range_0.write(i, i+1, i+2))
+		
+		for rid in rids:
+			self.assertNotEqual(page_range_0.get_withRID(rid), None)
+			
+		for rid in rids:
+			page_range_0.delete_withRID(rid)
+			
+		for rid in rids:
+			self.assertEqual(page_range_0.get_withRID(rid), None)
+			
+		with self.assertRaises(Exception):
+			page_range_0.write(0, 0, 0)
+	
+		
+		
 if __name__ == '__main__':
 	unittest.main()
+	

@@ -1,38 +1,50 @@
 from lstore.index import Index
 from time import time
+from lstore.pageRange import PageRange
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
 TIMESTAMP_COLUMN = 2
 SCHEMA_ENCODING_COLUMN = 3
 
-# We are storing RID as int probably 9 digits, it will be assigned
-# based on where the actualy key is stored and will be linked to the key via
-# index
-class Record:
-
-    def __init__(self, rid, key, columns):
-        self.rid = rid
-        self.key = key
-        self.columns = columns
 
 class Table:
-
-
 
     """
     :param name: string         #Table name
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    
+
     def __init__(self, name, num_columns, key):
         self.name = name
         self.key = key
         self.num_columns = num_columns
         self.page_directory = {}
+        self.page_ranges = []
+        self.page_range_number = -1
         self.index = Index(self)
         pass
+
+
+    def create_a_new_page_range(self):
+        self.page_ranges.append(PageRange())
+        self.page_range_number += 1
+
+
+    def is_page_range_full(self):
+        if self.page_range_number == -1:
+            return True
+        else:
+            # 8 base pages, each 512 records is the max
+            return self.page_ranges[self.page_range_number].num_records >= 4096
+
+
+    def get_next_page_range_number(self):
+        if self.is_page_range_full():
+            self.create_a_new_page_range()
+        return self.page_range_number
+
 
     def __merge(self):
         print("merge is happening")

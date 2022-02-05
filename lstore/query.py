@@ -1,4 +1,5 @@
-from lstore.table import Table, Record
+from lstore.table import Table
+from lstore.record import Record
 from lstore.index import Index
 
 
