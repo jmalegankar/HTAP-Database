@@ -2,7 +2,7 @@ import sys
 from BTree.b_tree_node import BTreeNode
 
 class InternalNode:
-	def __init__(iSize, lSize, p, l, r):
+	def __init__(iSize, lSize, p=None, l=None, r=None):
       	self.internalSize = iSize
         self.bTNode = BTreeNode(lSize, p, l, r)
         self.keys = []
