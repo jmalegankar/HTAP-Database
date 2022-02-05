@@ -24,6 +24,16 @@ class Query:
     """
 
     def delete(self, primary_key):
+        try:
+            rid = self.table.get_key(primary_key)
+            self.table.delete_key(primary_key)
+            page_range_number = get_page_range_number(rid)
+            self.table.page_ranges[page_range_number].delete_withRID(rid)
+
+        except Exception as e:
+            return False
+        else:
+            return True
         pass
 
     """
@@ -52,6 +62,11 @@ class Query:
     """
 
     def select(self, index_value, index_column, query_columns):
+        rid=self.table.get_key(index_value)
+        #rid=self.table.index.locate(index_column,index_value)
+        page_range_number = get_page_range_number(rid)
+        print( self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))
+
         pass
 
     """

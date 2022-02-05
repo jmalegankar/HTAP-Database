@@ -88,25 +88,18 @@ class PageRange:
     Get a record given page_number and offset
     """
     
-    def get(self, page_number, offset, isTail=False):
+    def get(self, page_number, offset, Q_col,isTail=False):
         if isTail:
-            return self.arr_of_tail_pages[page_number].get_user_cols(offset)
+            return self.arr_of_tail_pages[page_number].get_cols(offset,Q_col)
         else:
-            # return self.arr_of_base_pages[page_number].get_user_cols(offset)
-            # still does the same thing as above if there is no update
-            # if there is an update follow the indir
-            # sorry kevin for the amount of characters in this one line lol
-            return self.traverse_ind(self.arr_of_base_pages[page_number].get_user_cols(offset),
-                                    [0]* self.num_of_columns,
+
+            return self.traverse_ind(self.arr_of_base_pages[page_number].get_cols(offset,Q_col),
+                                    Q_col,
                                     self.arr_of_base_pages[page_number].get(offset,0)
                                     )
             
-    # some recursion not very good recursion lol
-    # basically take in the schema and rec of the prev caller and the next_rid
-    # which is the current recs rid
-    # the update the rec as needed based on schema
-
-    def traverse_ind(self, rec, schema, next_rid):
+            
+    def traverse_ind(self, rec, Q_col, next_rid):
         # base case if next rid is last tail it should point 0
         # THIS wil change when we decide out indirection default!
         # or if schema is updated
@@ -114,13 +107,13 @@ class PageRange:
             return None
     
         if next_rid != 0:
-            next_schema=[int(i) for i in bin(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3))[2:]]
+            schema=[int(i) for i in bin(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3))[2:]]
+ 
 
-            next_rec=self.get_withRID(next_rid,True)
+            next_rec=self.get_withRID(next_rid,Q_col,True)
 
-            for count,change in enumerate(next_schema):
-                if change==1 and schema[count]!=1:
-                    schema[count]=1
+            for count,change in enumerate(schema):
+                if change==1 and Q_col[count]==1:
                     rec[count]=next_rec[count]
 
         return rec
@@ -134,10 +127,10 @@ class PageRange:
     Get a record given RID
     """
 
-    def get_withRID(self, rid, isTail=False):
+    def get_withRID(self, rid, Q_col,isTail=False):
         page_number = get_page_number(rid)
         offset = get_physical_page_offset(rid)
-        return self.get(page_number, offset, isTail)
+        return self.get(page_number, offset, Q_col, isTail)
 
     """
     Delete a record given RID

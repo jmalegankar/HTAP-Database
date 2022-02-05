@@ -73,8 +73,8 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(page_range_0.write(3, 4), 1) # PageRange 0 second record ID should be 1
 		self.assertEqual(page_range_1.write(3, 4), 1000001) # PageRange 1 second record ID should be 1000001
 		
-		self.assertEqual(page_range_0.get(0, 0), [1, 2])
-		self.assertEqual(page_range_0.get(0, 1), [3, 4])
+		self.assertEqual(page_range_0.get(0, 0,[1,1]), [1, 2])
+		self.assertEqual(page_range_0.get(0, 1,[1,1]), [3, 4])
 		
 		# page range has 2 records, it should create a new base page if we insert 511 more records
 		for i in range(2, 512):
@@ -93,10 +93,10 @@ class TestPages(unittest.TestCase):
 			rids.append(page_range_0.write(i, i ** 2))
 		
 		for i in range(2, 4096):
-			self.assertEqual(page_range_0.get(i // 512, i % 512), [i, i ** 2])
+			self.assertEqual(page_range_0.get(i // 512, i % 512,[1,1]), [i, i ** 2])
 
 		for i, rid in enumerate(rids):
-			self.assertEqual(page_range_0.get_withRID(rid), [(i+2), (i+2) ** 2])
+			self.assertEqual(page_range_0.get_withRID(rid,[1,1]), [(i+2), (i+2) ** 2])
 		
 		with self.assertRaises(Exception):
 			# pagerange is full
@@ -127,37 +127,37 @@ class TestPages(unittest.TestCase):
 	def test_delete(self):
 		page_range_0 = PageRange(3, 0) # 2 col, id = 0
 		self.assertEqual(page_range_0.write(1, 2, 3), 0) # PageRange 0 first record ID should be 0
-		self.assertEqual(page_range_0.get_withRID(0), [1, 2, 3])
+		self.assertEqual(page_range_0.get_withRID(0,[1,1,1]), [1, 2, 3])
 	
 		page_range_0.update(0, 4, 5, 6)
-		self.assertEqual(page_range_0.get_withRID(0), [4, 5, 6])
+		self.assertEqual(page_range_0.get_withRID(0,[1,1,1]), [4, 5, 6])
 	
 		page_range_0.update(0, 7, 8, None)
-		self.assertEqual(page_range_0.get_withRID(0), [7, 8, 6])
+		self.assertEqual(page_range_0.get_withRID(0,[1,1,1]), [7, 8, 6])
 		page_range_0.delete_withRID(0)
 		
 		self.assertEqual(page_range_0.write(10, 20, 30), 1)
-		self.assertEqual(page_range_0.get_withRID(1), [10, 20, 30])
+		self.assertEqual(page_range_0.get_withRID(1,[1,1,1]), [10, 20, 30])
 		
 		page_range_0.update(1, 40, 50, 60)
-		self.assertEqual(page_range_0.get_withRID(1), [40, 50, 60])
+		self.assertEqual(page_range_0.get_withRID(1,[1,1,1]), [40, 50, 60])
 		
 		page_range_0.delete_withRID(1)
-		self.assertEqual(page_range_0.get_withRID(0), None)
-		self.assertEqual(page_range_0.get_withRID(1), None)
+		self.assertEqual(page_range_0.get_withRID(0,[1,1,1]), None)
+		self.assertEqual(page_range_0.get_withRID(1,[1,1,1]), None)
 		
 		rids = []
 		for i in range(4094):
 			rids.append(page_range_0.write(i, i+1, i+2))
 		
 		for rid in rids:
-			self.assertNotEqual(page_range_0.get_withRID(rid), None)
+			self.assertNotEqual(page_range_0.get_withRID(rid,[1,1,1]), None)
 			
 		for rid in rids:
 			page_range_0.delete_withRID(rid)
 			
 		for rid in rids:
-			self.assertEqual(page_range_0.get_withRID(rid), None)
+			self.assertEqual(page_range_0.get_withRID(rid,[1,1,1]), None)
 			
 		with self.assertRaises(Exception):
 			page_range_0.write(0, 0, 0)
