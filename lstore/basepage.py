@@ -101,6 +101,8 @@ class BasePage:
 		self.num_records += 1
 
 
+	# takes in a record and writes it
+	# used to update meaning making a new tail record
 	def update(self, indir, record: Record):
 		assert self.has_capacity() and len(record.columns) == self.num_user_columns
 		
@@ -112,10 +114,16 @@ class BasePage:
 		schema=0
 		for idx in range(self.num_user_columns):
 			# creating a schema with bitwise operators of what is updated
-			if record.columns[idx]==None:
+			# note this is not a great way of creating a schema as it 
+			# limits the amount of columns
+			# might want to refactor a way later.
+			# rn since we have 64 bits can have 63 columns i believe but I def
+			# want to change this logic later on but it works rn
+			if record.columns[idx]!=None:
 				schema= ( schema | (1 << self.num_user_columns-(idx+1)))
-			else:
 				self.phys_pages[idx + 4].write(record.columns[idx])
+			else:
+				self.phys_pages[idx + 4].write(0)
 		self.phys_pages[3].write(schema)
 		self.num_records += 1
 
