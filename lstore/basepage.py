@@ -35,7 +35,7 @@ class BasePage:
 					elif j == 3:
 						string += '{:b}\t\t'.format(self.get(i, j)).zfill(11) # 11-2=9
 					else:
-						string += '{}\t\t'.format(self.get(i, j))
+						string += '{}\t\t'.format(self.get(i, j)).rjust(9)
 				string += '\n'
 		else:
 			string += 'No Record\n'
