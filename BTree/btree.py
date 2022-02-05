@@ -1,12 +1,15 @@
-from BTree.leaf_node import LeafNode
-from BTree.internal_node import InternalNode
+import sys
+from btree import BTree
+from internal_node import InternalNode
+from b_tree_node import BTreeNode
+from leaf_node import LeafNode
 
 
 class BTree:
-  def __init__(iSize, lSize):
-    self.internalSize = iSize
-    self.leafSize = lSize
-    self.root = LeafNode(lSize)
+  def __init__(self, iSize, lSize):
+        self.internalSize = iSize
+        self.leafSize = lSize
+        self.root = LeafNode(lSize)
 
   def insert(self, value):
     ptr = self.root.insert(value)
@@ -20,4 +23,4 @@ class BTree:
     if (ptr):
       self.root = None
       self.root = ptr
-      self.root = setParent(None)
+      self.root = self.root.setParent(None)
