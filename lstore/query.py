@@ -65,7 +65,7 @@ class Query:
         rid=self.table.get_key(index_value)
         #rid=self.table.index.locate(index_column,index_value)
         page_range_number = get_page_range_number(rid)
-        print( self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))
+        return (self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))
 
         pass
 
