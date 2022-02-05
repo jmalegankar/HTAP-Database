@@ -27,9 +27,15 @@ class BasePage:
 		string = 'Current size: {}/512 records\n'.format(self.num_records)
 		string += '=' * 15 + '\n'
 		if self.num_records > 0:
+			string += 'Indirection\t\tRID\t\t\t\tTime\t\t\tSchema\n'
 			for i in range(self.num_records):
 				for j in range(self.num_columns):
-					string += '{}\t\t'.format(self.get(i, j))
+					if j < 2:
+						string += '{:09d}\t\t'.format(self.get(i, j))
+					elif j == 3:
+						string += '{:b}\t\t'.format(self.get(i, j)).zfill(11) # 11-2=9
+					else:
+						string += '{}\t\t'.format(self.get(i, j))
 				string += '\n'
 		else:
 			string += 'No Record\n'

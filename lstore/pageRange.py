@@ -17,7 +17,7 @@ class PageRange:
     """
 
     def __str__(self):
-        string = 'Base: {}/8, tail: {}\n'.format(self.range_number, self.base_page_number + 1, self.tail_page_number + 1)
+        string = 'Base: {}/8, tail: {}\n'.format(self.base_page_number + 1, self.tail_page_number + 1)
         string += '=' * 25 + '\n'
         string += 'BasePages:\n'
         if self.base_page_number > -1:
