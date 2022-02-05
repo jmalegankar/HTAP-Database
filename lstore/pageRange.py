@@ -114,11 +114,9 @@ class PageRange:
             return None
     
         if next_rid != 0:
-            next_schema=[int(i) for i in list('{0:0b}'.format(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3)))]
+            next_schema=[int(i) for i in bin(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3))[2:]]
 
             next_rec=self.get_withRID(next_rid,True)
-
-            next_rid=self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),0)
 
             for count,change in enumerate(next_schema):
                 if change==1 and schema[count]!=1:
