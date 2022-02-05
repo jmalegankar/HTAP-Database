@@ -1,6 +1,7 @@
 from lstore.table import Table
 from lstore.record import Record
 from lstore.index import Index
+from lstore.parser import *
 
 
 class Query:
@@ -32,9 +33,13 @@ class Query:
     """
 
     def insert(self, *columns):
+        if len(columns) != self.table.num_columns:
+            return False
+    
         page_range_number = self.table.get_next_page_range_number()
-        self.table.page_ranges[page_range_number].write(*columns)
-        pass
+        rid = self.table.page_ranges[page_range_number].write(*columns)
+        self.table.set_key(columns[self.table.key], rid)
+        return True
 
     """
     # Read a record with specified key
@@ -56,7 +61,17 @@ class Query:
     """
 
     def update(self, primary_key, *columns):
-        pass
+        try:
+            rid = self.table.get_key(primary_key)
+            if rid == None:
+                return False
+            page_range_number = get_page_range_number(rid)
+            self.table.page_ranges[page_range_number].update(rid, *columns)
+        except Exception as e:
+            return False
+        else:
+            return True
+        
 
     """
     :param start_range: int         # Start of the key range to aggregate 
@@ -87,3 +102,4 @@ class Query:
             u = self.update(key, *updated_columns)
             return u
         return False
+    

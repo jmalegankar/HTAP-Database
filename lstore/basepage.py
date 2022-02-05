@@ -111,7 +111,7 @@ class BasePage:
 	# takes in a record and writes it
 	# used to update meaning making a new tail record
 	def update(self, indir, record: Record):
-		assert self.has_capacity() and len(record.columns) == self.num_user_columns
+		assert len(record.columns) == self.num_user_columns
 		
 		self.phys_pages[0].write(indir)
 		self.phys_pages[1].write(record.rid)
@@ -137,7 +137,7 @@ class BasePage:
 
 	
 	def tail_update(self,offset,columns):
-		assert self.has_capacity() and len(columns) == self.num_user_columns
+		assert len(columns) == self.num_user_columns
 		schema=self.get(offset,3)
 
 		for idx in range(self.num_user_columns):
