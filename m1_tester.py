@@ -34,6 +34,7 @@ for i in range(0, number_of_records):
     # print('inserted', records[key])
 print("Insert finished")
 
+"""
 # Check inserted records using select query
 for key in records:
     # select function will return array of records 
@@ -85,3 +86,4 @@ for c in range(0, grades_table.num_columns):
         else:
             pass
             # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
+"""

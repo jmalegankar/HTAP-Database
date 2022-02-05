@@ -33,7 +33,7 @@ class Query:
 
     def insert(self, *columns):
         page_range_number = self.table.get_next_page_range_number()
-        print(self.table.page_ranges[page_range_number])
+        self.table.page_ranges[page_range_number].write(*columns)
         pass
 
     """

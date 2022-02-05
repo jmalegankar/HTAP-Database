@@ -25,12 +25,20 @@ class Table:
         self.page_range_number = -1
         self.index = Index(self)
         pass
+        
+    
+    def __str__(self):
+        string = 'num_columns: {}, page_range_number: {}\n'.format(self.num_columns, self.page_range_number)
+        string += '=' * 35 + '\n'
+        for page_range in self.page_ranges:
+            string += str(page_range) + '\n'
+        return string
 
 
     def create_a_new_page_range(self):
         # WIP
-        self.page_ranges.append(PageRange())
         self.page_range_number += 1
+        self.page_ranges.append(PageRange(self.num_columns, self.page_range_number))
 
 
     def is_page_range_full(self):
