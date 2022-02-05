@@ -130,6 +130,8 @@ class BasePage:
 			if record.columns[idx]!=None:
 				schema= ( schema | (1 << self.num_user_columns-(idx+1)))
 				self.phys_pages[idx + 4].write(record.columns[idx])
+			else:
+				self.phys_pages[idx + 4].write(0)
 		self.phys_pages[3].write(schema)
 		self.num_records += 1
 
