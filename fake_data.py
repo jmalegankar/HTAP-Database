@@ -102,16 +102,24 @@ class TestPages(unittest.TestCase):
 		# awesome, all data are correct!
 	
 	def test_tail(self):
-		page_range_0 = PageRange(6, 0) # 2 col, id = 0
+		# test summary
+		# create two pages of tails the most recent update
+		# for col 0 and 1 are in the last two tail places.
+		# the most recent update in col 3 is buried below 514 
+		# calls to traverse id
+		page_range_0 = PageRange(3, 0) # 2 col, id = 0
 
-		self.assertEqual(page_range_0.write(1, 2,3,4,5,6), 0) # PageRange 0 first record ID should be 0
+		self.assertEqual(page_range_0.write(1, 2, 10), 0) # PageRange 0 first record ID should be 0
+		page_range_0.update(0, *[10000,None,3])
+		for i in range(1, 512):
+			page_range_0.update(0, *[i ** 2,None, None])
 		# quick test to see that tail holds x update and that base page now points to tail rid
-		page_range_0.update(0, *[1,50,None,None,None,None])
-		page_range_0.update(0, *[10000,None,None,None,7,None])
+		page_range_0.update(0, *[1,25,None])
+		page_range_0.update(0, *[10000,None,None])
 		#page_range_0.traverse_ind(page_range_0.get_withRID(0),0,0)
 		#page_range_0.arr_of_base_pages[0].phys_pages[0].get(0)
-		print(page_range_0.get_withRID(0))
 		print('\n' + str(page_range_0))
+		print(page_range_0.get_withRID(0))
 
 
 if __name__ == '__main__':

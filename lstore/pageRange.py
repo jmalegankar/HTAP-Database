@@ -121,9 +121,7 @@ class PageRange:
             if change==1 and schema[count]!=1:
                 schema[count]=1
                 rec[count]=next_rec[count]
-                print(next_rec[count])
 
-        print(schema)
         return self.traverse_ind(rec,schema, next_rid)
         #for check in list(next_rec[3]):
 
