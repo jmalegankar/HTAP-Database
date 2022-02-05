@@ -65,8 +65,8 @@ class BasePage:
 		return self.phys_pages[column].get(rec_num)
 
 		# quicker setter to access page set
-	def set(self, rec_num, tail_rid, column):
-		return self.phys_pages[column].set(rec_num,tail_rid)
+	def set(self, rec_num, value, column):
+		return self.phys_pages[column].set(rec_num,value)
 	"""
 	Get multiple col
 	rec_num: record number in integer
@@ -114,7 +114,8 @@ class BasePage:
 		
 		self.phys_pages[0].write(indir)
 		self.phys_pages[1].write(record.rid)
-		self.phys_pages[2].write(int(time.time())) 
+		self.phys_pages[2].write(int(time.time()))
+
 
 
 		schema=0
@@ -134,4 +135,13 @@ class BasePage:
 		self.num_records += 1
 
 		pass
-		
+	
+	def tail_update(self,offset,columns):
+		assert self.has_capacity() and len(columns) == self.num_user_columns
+		schema=self.get(offset,3)
+
+		for idx in range(self.num_user_columns):
+			if columns[idx]!=None:
+				schema= ( schema | (1 << self.num_user_columns-(idx+1)))
+				self.phys_pages[idx + 4].set(offset,columns[idx])
+		self.phys_pages[3].set(offset,schema)

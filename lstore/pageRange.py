@@ -108,21 +108,19 @@ class PageRange:
         # base case if next rid is last tail it should point 0
         # THIS wil change when we decide out indirection default!
         # or if schema is updated
-        if next_rid==0 or self.check_schema(schema):
-            return rec
+        if next_rid != 0:
+            next_schema=[int(i) for i in list('{0:0b}'.format(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3)))]
 
-        next_schema=[int(i) for i in list('{0:0b}'.format(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3)))]
+            next_rec=self.get_withRID(next_rid,True)
 
-        next_rec=self.get_withRID(next_rid,True)
+            next_rid=self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),0)
 
-        next_rid=self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),0)
+            for count,change in enumerate(next_schema):
+                if change==1 and schema[count]!=1:
+                    schema[count]=1
+                    rec[count]=next_rec[count]
 
-        for count,change in enumerate(next_schema):
-            if change==1 and schema[count]!=1:
-                schema[count]=1
-                rec[count]=next_rec[count]
-
-        return self.traverse_ind(rec,schema, next_rid)
+        return rec
         #for check in list(next_rec[3]):
 
     
@@ -147,23 +145,25 @@ class PageRange:
         if self.is_page_full(self.tail_page_number, True):
             self.create_a_new_page(True)
 
-
-        # creates a tail_rid
-        tail_rid = create_rid(1, self.range_number, self.tail_page_number, self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num())
-        record = Record(tail_rid, -1, list(columns))
-
-        # grab the base id's location
         page_number = get_page_number(rid)
         offset = get_physical_page_offset(rid)
+        # creates a tail_rid
+        base_indr=self.arr_of_base_pages[page_number].get(offset,0)
+        if base_indr==0:
+            self.C_update(page_number,offset, *columns)
+        else:
+            page_number = get_page_number(base_indr)
+            offset = get_physical_page_offset(base_indr)
+            self.arr_of_tail_pages[page_number].tail_update(offset,list(columns))
 
-        # set the new tail record data
+    def C_update(self, page_number,offset, *columns):
+        tail_rid = create_rid(1, self.range_number, self.tail_page_number, self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num())
+        
+        record = Record(tail_rid, -1, list(columns))
+         # set the new tail record data
         self.arr_of_tail_pages[self.tail_page_number].update(self.arr_of_base_pages[page_number].get(offset,0),record)
 
         # set base page to new tail page rid
-        self.arr_of_base_pages[page_number].set(offset,tail_rid,0) 
+        self.arr_of_base_pages[page_number].set(offset,tail_rid,0)
 
-        #Note further implmentation would include updating the time accessed maybe or renaimng this
-        #function to a dif name
-
-        return tail_rid
         

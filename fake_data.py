@@ -110,9 +110,9 @@ class TestPages(unittest.TestCase):
 		page_range_0 = PageRange(3, 0) # 2 col, id = 0
 
 		self.assertEqual(page_range_0.write(1, 2, 10), 0) # PageRange 0 first record ID should be 0
-		page_range_0.update(0, *[10000,None,3])
+		#page_range_0.update(0, *[10000,None,3])
 		for i in range(1, 512):
-			page_range_0.update(0, *[i ** 2,None, None])
+			page_range_0.update(0, *[i ** 2,None, i])
 		# quick test to see that tail holds x update and that base page now points to tail rid
 		page_range_0.update(0, *[1,25,None])
 		page_range_0.update(0, *[10000,None,None])
