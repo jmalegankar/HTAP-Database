@@ -28,6 +28,7 @@ class Table:
 
 
     def create_a_new_page_range(self):
+        # WIP
         self.page_ranges.append(PageRange())
         self.page_range_number += 1
 

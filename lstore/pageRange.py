@@ -144,6 +144,7 @@ class PageRange:
     """
     Delete a record given RID
     """
+
     def delete_withRID(self, rid):
         base_page_number = get_page_number(rid)
         base_offset = get_physical_page_offset(rid)

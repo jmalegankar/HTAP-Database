@@ -1,4 +1,7 @@
 import unittest
+from lstore.db import Database
+from lstore.table import Table
+from lstore.query import Query
 from lstore.pageRange import PageRange
 from lstore.basepage import BasePage
 from lstore.record import Record
@@ -158,8 +161,13 @@ class TestPages(unittest.TestCase):
 			
 		with self.assertRaises(Exception):
 			page_range_0.write(0, 0, 0)
-	
-		
+
+
+	def test_query_insert(self):
+		db = Database()
+		grades_table = db.create_table('Grades', 5, 0)
+		query = Query(grades_table)
+		query.insert(1, 2, 3, 4, 5)
 		
 if __name__ == '__main__':
 	unittest.main()

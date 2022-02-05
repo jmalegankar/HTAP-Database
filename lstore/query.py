@@ -24,6 +24,7 @@ class Query:
 
     def delete(self, primary_key):
         pass
+
     """
     # Insert a record with specified columns
     # Return True upon succesful insertion
@@ -31,7 +32,8 @@ class Query:
     """
 
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
+        page_range_number = self.table.get_next_page_range_number()
+        print(self.table.page_ranges[page_range_number])
         pass
 
     """
@@ -46,6 +48,7 @@ class Query:
 
     def select(self, index_value, index_column, query_columns):
         pass
+
     """
     # Update a record with specified key and columns
     # Returns True if update is succesful
