@@ -26,15 +26,16 @@ class Query:
     def delete(self, primary_key):
         try:
             rid = self.table.get_key(primary_key)
+            if rid == None:
+                return False
+    
             self.table.delete_key(primary_key)
             page_range_number = get_page_range_number(rid)
             self.table.page_ranges[page_range_number].delete_withRID(rid)
-
         except Exception as e:
             return False
         else:
             return True
-        pass
 
     """
     # Insert a record with specified columns
@@ -60,18 +61,18 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
-    
-    """
-    A B C
-    1 2 3
-    2 2 4
-    """
 
     def select(self, index_value, index_column, query_columns):
-        rid=self.table.get_key(index_value)
-        #rid=self.table.index.locate(index_column,index_value)
-        page_range_number = get_page_range_number(rid)
-        return [Record(rid, self.table.key, self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))]
+        try:
+            rid = self.table.get_key(index_value)
+            if rid == None:
+                return False
+
+            #rid=self.table.index.locate(index_column,index_value)
+            page_range_number = get_page_range_number(rid)
+            return [Record(rid, self.table.key, self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))]
+        except:
+            return False
 
     """
     # Update a record with specified key and columns
@@ -89,6 +90,11 @@ class Query:
         except Exception as e:
             return False
         else:
+            # Update Index Here
+            if columns[self.table.key] is not None:
+                # Need to update our primary_key, delete old index, create new one
+                self.table.delete_key(primary_key)
+                self.table.set_key(columns[self.table.key], rid)
             return True
         
 

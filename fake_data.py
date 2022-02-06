@@ -8,6 +8,7 @@ from lstore.record import Record
 from lstore.page import Page
 from lstore.parser import *
 import time
+import random
 
 class TestPages(unittest.TestCase):
 
@@ -16,7 +17,6 @@ class TestPages(unittest.TestCase):
 		basepage = BasePage(2) # create two columns
 
 		# Test First Record
-		
 		self.assertEqual(basepage.get_next_rec_num(), 0)
 		basepage.write(Record(0, 0, [123, 321])) # set first column to 123 and second to 321
 		self.assertEqual(basepage.get(0, 2), int(start)) # check internal column (timestamp)
@@ -47,7 +47,7 @@ class TestPages(unittest.TestCase):
 		# Page is full and insert new record, should raise error
 		with self.assertRaises(Exception):
 			basepage.write(Record(512, 0, [123, 321]))
-	
+
 
 	def test_parser(self):
 		self.assertEqual(get_physical_page_offset(123456789), 789)
@@ -60,8 +60,8 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(get_page_number(create_rid(0, 0, 456, 0)), 456)
 		self.assertEqual(get_physical_page_offset(create_rid(0, 0, 0, 789)), 789)
 		self.assertEqual(create_rid(1, 23, 456, 789), 123456789)
-	
-	
+
+
 	def test_page_range(self):
 		rids = []
 		
@@ -103,7 +103,8 @@ class TestPages(unittest.TestCase):
 			page_range_0.write(0, 0)
 			
 		# awesome, all data are correct!
-	
+
+
 	def test_tail(self):
 		# test summary
 		# create two pages of tails the most recent update
@@ -123,6 +124,7 @@ class TestPages(unittest.TestCase):
 		#page_range_0.arr_of_base_pages[0].phys_pages[0].get(0)
 #		print('\n' + str(page_range_0))
 #		print(page_range_0.get_withRID(0))
+
 
 	def test_delete(self):
 		page_range_0 = PageRange(3, 0) # 2 col, id = 0
@@ -162,14 +164,74 @@ class TestPages(unittest.TestCase):
 		with self.assertRaises(Exception):
 			page_range_0.write(0, 0, 0)
 
-	def test_query_insert(self):
+
+	def test_query_insert_select(self):
 		db = Database()
 		grades_table = db.create_table('Grades', 5, 0)
 		query = Query(grades_table)
 		
 		for i in range(10000):
 			query.insert(i, i+1, i+2, i+3, i+4)
+		for i in range(10000):
+			result = query.select(i, 0, [1] * 5)
+			self.assertEqual(len(result), 1)
+			self.assertEqual(result[0].columns, [i, i+1, i+2, i+3, i+4])
+
+
+	def test_query_update(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
 		
+		query.insert(1, 2, 3)
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 2, 3])
+		
+		query.update(1, None, 9, None)
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 9, 3])
+		
+		query.update(1, None, None, 10)
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 9, 10])
+		
+		query.increment(1, 1)
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 10, 10])
+
+		query.update(1, 8, None, None)
+		self.assertEqual(query.select(8, 0, [1, 1, 1])[0].columns, [8, 10, 10])
+		self.assertEqual(query.select(1, 0, [1, 1, 1]), False)
+
+
+	def test_query_delete(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		
+		keys = random.sample(range(-100000000, 100000000), 10000)
+		
+		# insert
+		for key in keys:
+			self.assertEqual(query.insert(key, key * 2, key * 3), True)
+		
+		# select should return a valid record
+		for key in keys:
+			self.assertEqual(query.select(key, 0, [1, 1, 1])[0].columns, [key, key * 2, key * 3])
+		
+		# delete should return True
+		for key in keys:
+			self.assertEqual(query.delete(key), True)
+		
+		# delete a invalid key should return False
+		self.assertEqual(query.delete(1000000001), False)
+		
+		# select deleted keys should return None
+		for key in keys:
+			self.assertEqual(query.select(key, 0, [1, 1, 1]), False)
+		
+		# delete deleted keys should return False
+		for key in keys:
+			self.assertEqual(query.delete(key), False)
+
+
 if __name__ == '__main__':
 	unittest.main()
-	

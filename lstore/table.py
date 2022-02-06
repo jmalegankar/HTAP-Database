@@ -31,6 +31,8 @@ class Table:
     def __str__(self):
         string = 'num_columns: {}, page_range_number: {}\n'.format(self.num_columns, self.page_range_number)
         string += '=' * 35 + '\n'
+        if self.page_range_number == -1:
+            string += 'Table is Empty'
         for page_range in self.page_ranges:
             string += str(page_range) + '\n'
         return string
@@ -45,7 +47,7 @@ class Table:
 
 
     def delete_key(self, key):
-        self.key_index[key] = None
+        del self.key_index[key]
 
 
     def create_a_new_page_range(self):
