@@ -139,7 +139,7 @@ class InternalNode(BTreeNode):
                 pos = self.count
         
             self.addToThis(knewNode, pos)
-=======
+
     def insertValue(self, value): #there are 3 insert functions???
       pos = 0
       if self.keys[pos] > value:
@@ -193,11 +193,8 @@ class InternalNode(BTreeNode):
           pos = self.bTNnode.count
   
       self.addToThis(newNode, pos)
->>>>>>> 7cb561d93b585da023c2c835ee1ea70132d8671e
 
-
-
-    def remove(self, value):
+    def remove(self, value: int):
         pos, i = 0
         for pos in range(self.count-1, 0, -1):
             if self.keys[pos] > value:
@@ -223,7 +220,7 @@ class InternalNode(BTreeNode):
             return self.children[0]
         return None
 
-    def removeChild(self, position):
+    def removeChild(self, position: int):
         ptr = BTreeNode(self.children[position]) 
         self.count -= 1
 
@@ -235,7 +232,7 @@ class InternalNode(BTreeNode):
             self.parent.resetMinimum(self)
         return ptr
 
-    def removeWithLeftSibling(self, position):
+    def removeWithLeftSibling(self):
         if (self.leftSibling.count > ((self.internalSize + 1)/2) ):
             self.insert(self.leftSibling.removeChild(self.leftSibling.count - 1) )
             if (self.parent):
@@ -249,45 +246,45 @@ class InternalNode(BTreeNode):
                 self.rightSibling.setLeftSibling(self.leftSibling)
             return self
 
-    def removeWithRightSibling(self, position):
-        if (self.bTNode.right.count > (self.internalSize + 1)/2):
-            self.insert(self.bTNode.right.removeChild(0))
+    def removeWithRightSibling(self, position: int):
+        if (self.rightSibling.count > (self.internalSize + 1)/2):
+            self.insert(self.rightSibling.removeChild(0))
             if (position == 0):
-                self.bTNode.parent.resetMinimum(self)
+                self.parent.resetMinimum(self)
             return None
         else:
-            for i in range(self.bTNode.count-1, 0, -1):
-                self.bTNode.right.insert(self.children[i])
-            self.bTNode.right.setLeftSibling(self.bTNode.left)
-            if (self.bTNode.left):
-                self.bTNode.left.setRightSibling(self.bTNode.right)
+            for i in range(self.count-1, 0, -1):
+                self.rightSibling.insert(self.children[i])
+            self.rightSibling.setLeftSibling(self.leftSibling)
+            if (self.leftSibling):
+                self.leftSibling.setRightSibling(self.rightSibling)
             return self 
 
-    def resetMinimum(self, child):
-        for i in range (0, self.bTNode.count):
+    def resetMinimum(self, child: BTreeNode):
+        for i in range (0, self.count):
             if self.children[i] == child:
                 self.keys[i] = self.children[i].getMinimum()
-                if (i == 0 and self.bTNode.parent):
-                    self.bTNode.parent.resetMinimum(self) #??
+                if (i == 0 and self.parent):
+                    self.parent.resetMinimum(self)
             break
 
-    def split(self, last):
-        newPtr = InternalNode(self.internalSize, self.bTNode.leafSize, self.bTNode.parent, self, self.bTNode.right)
-        if self.bTNode.right:
-            self.bTNode.right.setLeftSibling(newPtr)
+    def split(self, last: BTreeNode):
+        newPtr = InternalNode(self.internalSize, self.leafSize, self.parent, self, self.rightSibling)
+        if self.rightSibling:
+            self.rightSibling.setLeftSibling(newPtr)
                     
-        self.bTNode.right = newPtr
+        self.rightSibling = newPtr
                     
         for i in range( (self.internalSize + 1) / 2, self.internalSize ):
-            newPtr.children[newPtr.bTNode.count] = self.children[i] 
-            newPtr.keys[newPtr.bTNode.count] = self.keys[i]
-            newPtr.bTNode.count += 1
+            newPtr.children[newPtr.count] = self.children[i] 
+            newPtr.keys[newPtr.count] = self.keys[i]
+            newPtr.count += 1
             self.children[i].setParent(newPtr) 
-        newPtr.children[newPtr.bTNode.count] = last
-        newPtr.keys[newPtr.bTNode.count] = last.getMinimum()
-        newPtr.bTNode.count += 1
+        newPtr.children[newPtr.count] = last
+        newPtr.keys[newPtr.count] = last.getMinimum()
+        newPtr.count += 1
         last.setParent(newPtr)
-        self.bTNode.count = (self.internalSize + 1) /2
+        self.count = (self.internalSize + 1) /2
         return newPtr
 
 # class LeafNode:
