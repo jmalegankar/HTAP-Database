@@ -345,22 +345,22 @@ class LeafNode(BTreeNode):
     for i in range(0, self.count):
         print(self.values[i] + ' ')
 
-  class BTree:
-      def __init__(self, iSize: int, lSize: int):
-          self.internalSize = iSize
-          self.leafSize = lSize
-          self.root = LeafNode(lSize)
+class BTree:
+    def __init__(self, iSize: int, lSize: int):
+        self.internalSize = iSize
+        self.leafSize = lSize
+        self.root = LeafNode(lSize)
 
-      def insert(self, value:int):
-          ptr = self.root.insert(value)
-          if (ptr):
+    def insert(self, value: int):
+        ptr = self.root.insertValue(value)
+        if (ptr):
             iPtr = InternalNode(self.internalSize, self.leafSize)
-            iPtr.insert(self.root, ptr)
+            iPtr.insertOldRoot(self.root, ptr)
             self.root = iPtr
-  
-      def remove(self, value):
-          ptr = self.root.remove(value)
-          if (ptr):
+
+    def remove(self, value):
+        ptr = self.root.remove(value)
+        if (ptr):
             self.root = None
             self.root = ptr
             self.root = self.root.setParent(None)
