@@ -81,7 +81,7 @@ class InternalNode(BTreeNode):
             return self.children[0].getMinimum()
 
 
-       def insertValue(self, value): #there are 3 insert functions???
+    def insertValue(self, value): #there are 3 insert functions???
       pos = 0
       if self.keys[pos] > value:
           for pos in range(self.bTNode.count - 1, 0, -1):
