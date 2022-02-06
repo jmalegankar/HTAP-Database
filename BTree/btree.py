@@ -1,66 +1,35 @@
 import sys
 
-class BTree:
-  def __init__(self, iSize, lSize):
-        self.internalSize = iSize
-        self.leafSize = lSize
-        self.root = LeafNode(lSize)
-
-  def insert(self, value):
-    ptr = self.root.insert(value)
-    if (ptr):
-      iPtr = InternalNode(self.internalSize, self.leafSize)
-      iPtr.insert(self.root, ptr)
-      self.root = iPtr
-  
-  def remove(self, value):
-    ptr = self.root.remove(value)
-    if (ptr):
-      self.root = None
-      self.root = ptr
-      self.root = self.root.setParent(None)
-
 class BTreeNode:
-  def __init__(self, lSize: int = 0, p = None, l = None, r = None): # L and R are INTERNAL NODES
-      self.count = 0
-      self.leafSize = lSize
-      self.parent = p
-      self.left = l
-      self.right = r
-
-  # get count
-  def getCount(self):
-      return self.count
-  
-  # get left sibling
-  def getLeftSibling(self):
-      return self.left
-  
-  # get right sibling
-  def getRightSibling(self):
-      return self.right
+  def __init__(self, lSize: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
+        self.count = 0
+        self.leafSize = lSize
+        self.parent = p
+        self.leftSib = l
+        self.rightSib = r
   
   # set parent
-  def setParent(self, x):
-      self.parent = x
+    def setParent(self, x):
+        self.parent = x
   
   # set right sibling
-  def setRightSibling(self, x):
-      self.right = x
+    def setRightSibling(self, x):
+        self.right = x
   
   #set left sibling
-  def setLeftSibling(self, x):
-      self.left = x
+    def setLeftSibling(self, x):
+        self.left = x
+
 
 class InternalNode:
-    def __init__(self, iSize, lSize, p=None, l=None, r=None):
-            self.internalSize = iSize
-            self.bTNode = BTreeNode(lSize, p, l, r)
-            self.keys = []
-            self.children = []
+    def __init__(self, iSize:int, lSize:int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
+        self.internalSize = iSize
+        self.bTNode = BTreeNode(lSize, p, l, r)
+        self.keys = []
+        self.children = []
 
 
-    def addPtr(self, ptr, pos):
+    def addPtr(self, ptr: BTreeNode, pos: int):
         if (pos == self.internalSize):
             return ptr
     
@@ -416,3 +385,24 @@ class LeafNode:
         print("Leaf: ")
         for i in range(0, self.bTNode.count):
             print(self.values[i] + ' ')
+
+class BTree:
+    def __init__(self, iSize: int, lSize: int):
+        self.internalSize = iSize
+        self.leafSize = lSize
+        self.root = LeafNode(lSize)
+
+    def insert(self, value:int):
+        ptr = BTreeNode()
+        ptr = self.root.insert(value)
+        if (ptr):
+          iPtr = InternalNode(self.internalSize, self.leafSize)
+          iPtr.insert(self.root, ptr)
+          self.root = iPtr
+  
+    def remove(self, value):
+        ptr = self.root.remove(value)
+        if (ptr):
+          self.root = None
+          self.root = ptr
+          self.root = self.root.setParent(None)
