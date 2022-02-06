@@ -32,8 +32,7 @@ class InternalNode:
     def addPtr(self, ptr: BTreeNode, pos: int):
         if (pos == self.internalSize):
             return ptr
-    
-        last = self.children[self.bTNode.count - 1]
+        last = BTreeNode(self.children[self.bTNode.count - 1])
     
         for i in range(pos, self.bTNode.count - 2, -1):
             self.children[i + 1] = self.children[i]
