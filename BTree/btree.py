@@ -1,4 +1,4 @@
-"""
+
 class BTreeNode:
   def __init__(self, lSize = None, p = None, l = None, r = None):
     self.count = 0
@@ -18,7 +18,7 @@ class BTreeNode:
   #set left sibling
   def setLeftSibling(self, x):
     self.leftSibling = x
-
+"""
 class InternalNode(BTreeNode):
   def __init__(self, iSize = None, lSize = None, p = None, l = None, r = None):
     self.internalSize = iSize
