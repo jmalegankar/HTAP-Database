@@ -52,7 +52,7 @@ class InternalNode(BTreeNode):
             self.parent.resetMinimum(self)
 
     def addToRight(self, ptr: BTreeNode, last:BTreeNode):
-        rightSibling.insertNewNode(last)
+        self.rightSibling.insertNewNode(last)
         if(ptr == self.children[0] and self.parent):
             self.parent.resetMinimum(self)
 
