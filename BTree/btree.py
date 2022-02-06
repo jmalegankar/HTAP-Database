@@ -4,9 +4,9 @@ class BTreeNode:
   def __init__(self, lSize = None: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
         self.count = 0
         self.leafSize = lSize
-        self.parent = InternalNode(lSize)
-        self.leftSibling = BTreeNode(lSize)
-        self.rightSibling = BTreeNode(lSize)
+        self.parent = InternalNode()
+        self.leftSibling = BTreeNode()
+        self.rightSibling = BTreeNode()
   
   # set parent
     def setParent(self, x):
@@ -22,7 +22,7 @@ class BTreeNode:
 
 
 class InternalNode(BTreeNode):
-    def __init__(self, iSize:int, lSize:int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
+    def __init__(self, iSize = None : int, lSize = None: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
         self.internalSize = iSize
         self.keys = []
         self.children = []
