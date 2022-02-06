@@ -2,8 +2,17 @@
 
 import sys
 from btree import BTree
-from internal_node import InternalNode
-from b_tree_node import BTreeNode
-from leaf_node import LeafNode
 
 print("tester")
+
+# 4 children of Internal Nodes
+
+
+# 2 Leaf Nodes
+
+
+# 1 BTNode
+
+
+# 1 BTree
+
