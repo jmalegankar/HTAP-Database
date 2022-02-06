@@ -280,7 +280,7 @@ class LeafNode(BTreeNode):
     if self.count > 0:
         return self.values[0]
 
-  def insert(self, value):
+  def insertValue(self, value):
     last = 0;
     if (self.count < self.leafSize):
         self.addToThis(value)
