@@ -225,12 +225,8 @@ class InternalNode(BTreeNode):
         
 """
 
- class LeafNode:
+ class LeafNode(BTreeNode):
      def __init__(self, lSize, p = None, l = None, r = None):
-             self.internalNode = p
-             self.leftTNode = l
-             self.rightTNode = r
-             self.bTNode = BTreeNode(lSize, p, self.leftTNode, self.rightTNode)
              self.values = []
     
      def addToLeft(self, value, last):
