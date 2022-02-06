@@ -225,155 +225,141 @@ class InternalNode(BTreeNode):
         
 """
 
-class LeafNode:
+class LeafNode(BTreeNode):
   def __init__(self, lSize, p = None, l = None, r = None):
-    self.internalNode = p
-    self.leftTNode = l
-    self.rightTNode = r
-    self.bTNode = BTreeNode(lSize, p, self.leftTNode, self.rightTNode)
     self.values = []
     
   def addToLeft(self, value, last):
-    self.leftSibling = self.values[0]
-    for i in range(0, (self.bTNode).count-1):
+    self.leftSibling.insert(value[0])
+    for i in range(0, self.count-1):
         self.values[i] = self.values[i+1]
-    self.values[(self.bTNode).count-1] = last;
-    if self.bTNode.parent: 
-        self.bTNode.parent.resetMinimum(self.bTNode.parent)
+    self.values[self.count-1] = last;
+    if self.parent: 
+        self.parent.resetMinimum(self)
 
   def addToRight(self, value, last):
-    self.rightSibling = last
-    if (value == self.values[0] and (self.bTNode.parent)):
-        self.bTNode.parent.resetMinimum(self.bTNode.parent)
+    self.rightSibling.insert(last)
+    if (value == self.values[0] and (self.parent)):
+        self.parent.resetMinimum(self.parent)
       
   def addToThis(self, value):
-    i = 0
-    if self.values[i] > value:
-      for i in range( (self.bTNode).count - 1, 0 , -1 ): 
-          if self.values[i] > value:
-              self.values[i+1] = self.values[i]
+    for i in range(self.count - 1, 0 , -1 ): 
+        if self.values[i] > value:
+            self.values[i+1] = self.values[i]
 
     self.values[i+1] = value;
-    self.bTNode.count = self.bTNode.count + 1
-    if (value == self.values[0] and self.bTNode.parent):
-        self.bTNode.parent.resetMinimum(self.bTNode.parent)
+    self.count = self.count + 1
+    if (value == self.values[0] and self.parent):
+        self.parent.resetMinimum(self.parent)
 
   def addValue(self, value, last):
-    if value > self.values[(self.bTNode).count-1]:
+    if value > self.values[self.count-1]:
         last = value;
     else:
-        last = self.values[(self.bTNode).count-1]
-    for i in range((self.bTNode).count - 2, 0 , -1):
-        if self.values[i] <= value:
-            break
-        self.values[i+1] = self.values[i]
-    self.values[i+1] = value
+        last = self.values[self.count-1]
+        for i in range(self.count - 2, 0 , -1):
+            if self.values[i] > value:
+                self.values[i+1] = self.values[i]
+        self.values[i+1] = value
 
   def getMaximum(self):
-    if (self.bTNode).count > 0:
-        return self.values[ (self.bTNode).count - 1 ]
-    else:
-        return sys.maxsize
+    if self.count > 0:
+        return self.values[self.count - 1]
+
 
   def getMinimum(self):
-    if (self.bTNode).count > 0:
+    if self.count > 0:
         return self.values[0]
-    else:
-        return 0
 
   def insert(self, value):
     last = 0;
-    if ((self.bTNode).count < self.bTNode.leafSize):
+    if (self.count < self.leafSize):
         self.addToThis(value)
         return None
 
     self.addValue(value, last)
   
-    if(self.leftSibling and (self.leftSibling.count < self.bTNode.leafSize)): #not sure what comes after "and"
+    if(self.leftSibling and (self.leftSibling.count < self.leafSize)): #not sure what comes after "and"
         self.addToLeft(value, last)
         return None
-    elif (self.rightSibling and (self.rightSibling.count < self.bTNode.leafSize)): #not sure what comes after "and"
-        self.addToRight(value, last)
-        return None
     else:
-        return self.split(value, last) #not sure what split is 
+        if (self.rightSibling and (self.rightSibling.count < self.leafSize)): #not sure what comes after "and"
+            self.addToRight(value, last)
+            return None
+        else:
+            return self.split(value, last) #not sure what split is 
 
   def remove(self, value):
     pos = 0;
-    for pos in range(0, self.bTNode.count): #I don't understand this line
-        if self.values[pos] == value:
-            break
-        if (pos < self.bTNode.count):
-            self.bTNode.count -= 1
-    for i in range(pos, self.bTNode.count):
+    for pos in range(0, self.count): #I don't understand this line
+        if (pos < self.count) and (values[pos] != value):
+            pos += 1
+    for i in range(pos, self.count):
         self.values[i] = self.values[i+1]
 
-    if self.bTNode.count < (((self.bTNode).leafSize + 1) / 2):
+    if self.count < ((self.leafSize + 1) / 2):
         if self.leftSibling:
             return self.removeWithLeftSibling()
         elif self.rightSibling:
             return self.removewithRightSibling(pos)
 
-    if pos == 0 and self.bTNode.parent:
-        self.bTNode.parent = ((self.bTNode).parent).resetMinimum(self.bTNode.parent)
+    if pos == 0 and self.parent:
+        self.parent = (self.parent).resetMinimum(self.parent)
 
     return None
 
 
   def removeWithLeftSibling(self):
-    if (self.leftSibling.count > (self.bTNode.leafSize +1)/2):
-        self.insert( self.leftSibling.getMaximum())
+    if (self.leftSibling.count > (self.leafSize +1)/2):
+        self.insert(self.leftSibling.getMaximum())
         self.leftSibling.remove(self.values[0]) #not sure 
-    if (self.bTNode.parent):
+    if (self.parent):
         self.bTNode.parent.resetMinimum(self.bTNode.parent)
         return None
     else:
-        for i in range(0, self.bTNode.count):
+        for i in range(0, self.count):
             self.leftSibling.insert(self.values[i]) #not sure 
             self.leftSibling.setRightSibling(self.rightSibling) # unsure
         if (self.rightSibling):
             self.rightSibling.setLeftSibling(self.leftSibling)
-    return self #I think self.bTNode.right is 'this' in this case but I'm not sure
+        return self #I think self.bTNode.right is 'this' in this case but I'm not sure
 
   def removeWithRightSibling(self, pos):
-    if(self.rightSibling.count > ((self.bTNode.leafSize) +1 )/ 2):
+    if(self.rightSibling.count > ((self.leafSize) +1 )/ 2):
         self.insert(self.rightSibling.getMinimum() ) #this is definitely wrong
-        self.rightSibling.remove(self.values[(self.bTNode).count - 1])
-    if pos == 0:
-        self.bTNode.parent.resetMinimum(self.bTNode.parent)
-        return None
+        self.rightSibling.remove(self.values[self.count - 1])
+        if pos == 0:
+            self.parent.resetMinimum(self.parent)
+            return None
     else:
-        for i in range(0, self.bTNode.count):
+        for i in range(0, self.count):
             self.rightSibling.insert(self.values[i])
-            self.rightSibling = self.bTNode.setLeftSibling(self.leftSibling)
+            self.rightSibling.setLeftSibling(self.leftSibling)
         if (self.leftSibling):
-            self.leftSibling = self.bTNode.setRigthSibling(self.rightSibling)
+            self.leftSibling.setRigthSibling(self.rightSibling)
         return self.leftSibling
 
   def split (self, value, last):
-    newPtr =  LeafNode(self.bTNode.leafsize, self.bTNode.parent, self, self.rightSibling)
+    newPtr =  LeafNode(self.leafsize, self.parent, self, self.rightSibling)
   
     if (self.rightSibling):
         self.rightSibling = self.bTNode.setLeftSibling(newPtr)
     self.rightSibling = newPtr
   
-    current = newPtr.bTNode.count
-    for i in range(  ((((self.bTNode).leafSize) +1)/2), self.bTNode.leafSize):
-        newPtr.values[current] = self.values[i] #idkk
-        newPtr.bTNode.count += 1
-        current = newPtr.bTNode.count
-    newPtr.values[current] = last
-    newPtr.bTNode.count += 1
-    newPtr.bTNode.count = (self.bTNode.leafSize + 1) / 2
+    for i in range(((self.leafSize +1)/2), self.leafSize):
+        newPtr.values[newPtr.count+1] = self.values[i] #idkk
+
+    newPtr.values[newPtr.count+1] = last
+    newPtr.count = (self.leafSize + 1) / 2
   
-    if value == self.values[0] and self.bTNode.parent:
-        self.bTNode.parent.resetMinimum(self)
+    if value == self.values[0] and self.parent:
+        self.parent.resetMinimum(self)
   
     return newPtr
 
   def print_LeafNode(self, address_queue):
     print("Leaf: ")
-    for i in range(0, self.bTNode.count):
+    for i in range(0, self.count):
         print(self.values[i] + ' ')
 
  # class BTree:
