@@ -13,25 +13,25 @@ class BTreeNode:
             self.right = r
 
 	    # get count
-        def getCount(self):
-            return self.count
-        
-        # get left sibling
-        def getLeftSibling(self):
-            return self.left
-        
-        # get right sibling
-        def getRightSibling(self):
-            return self.right
-        
-        # set parent
-        def setParent(self, x):
-            self.parent = x
-        
-        # set right sibling
-        def setRightSibling(self, x):
-            self.right = x
-        
-        #set left sibling
-        def setLeftSibling(self, x):
-            self.left = x
+    def getCount(self):
+        return self.count
+    
+    # get left sibling
+    def getLeftSibling(self):
+        return self.left
+    
+    # get right sibling
+    def getRightSibling(self):
+        return self.right
+    
+    # set parent
+    def setParent(self, x):
+        self.parent = x
+    
+    # set right sibling
+    def setRightSibling(self, x):
+        self.right = x
+    
+    #set left sibling
+    def setLeftSibling(self, x):
+        self.left = x
