@@ -34,7 +34,7 @@ class InternalNode(BTreeNode):
             return ptr
         last = BTreeNode(self.children[self.bTNode.count - 1])
     
-        for i in range(pos, self.bTNode.count - 2, -1):
+        for i in range(self.bTNode.count - 2, pos, -1):
             self.children[i + 1] = self.children[i]
             self.keys[i + 1] = self.keys[i]
         
