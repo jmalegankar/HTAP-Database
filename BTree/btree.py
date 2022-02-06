@@ -42,7 +42,7 @@ class InternalNode(BTreeNode):
         return last
 
     def addToLeft(self, last: BTreeNode):
-        self.leftSibling.insertNewNode(children[0])
+        self.leftSibling.insertNewNode(self.children[0])
         for i in range(0, self.count-1):
             self.children[i] = self.children[i+1]
             self.keys[i] = self.keys[i+1]
