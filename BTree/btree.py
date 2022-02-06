@@ -44,25 +44,27 @@ class InternalNode(BTreeNode):
         return last
 
 
-    def addToLeft(self, last):
+    def addToLeft(self, last: BTreeNode):
         self.leftSibling.insert(children[0])
         for i in range(0, self.bTNode.count-1):
             self.children[i] = self.children[i+1]
             self.keys[i] = self.keys[i+1]
+
         self.children[self.bTNode.count -1] = last
         self.keys[self.bTNode.count-1] = last.getMinimum() 
         last.setParent(self)
         if (self.bTNode.parent):
             self.bTNode.parent.resetMinimum(self)
 
-    def addToRight(self, ptr, last):
+    def addToRight(self, ptr: BTreeNode, last:BTreeNode):
+        rightSibling.insert(last)
         if(ptr == self.children[0] and self.bTNode.parent):
             self.bTNode.parent.resetMinimum(self)
 
-    def addToThis(self, ptr, pos):
+    def addToThis(self, ptr: BTreeNode, pos: int):
         for i in range(self.bTNode.count-1, pos, -1):
             self.children[i+1] = self.children[i]
-        self.keys[i+1] = self.keys[i]
+            self.keys[i+1] = self.keys[i]
         self.children[pos] = ptr
         self.keys[pos] = ptr.getMinimum()
         self.bTNode.count += 1
@@ -73,14 +75,10 @@ class InternalNode(BTreeNode):
     def getMaximum(self): 
         if (self.bTNode.count > 0):
             return self.children[self.bTNode.count-1].getMaximum()
-        else:
-            return sys.maxsize
 
     def getMinimum(self):
         if (self.bTNode.count > 0):
             return self.children[0].getMinimum()
-        else:
-            return 0
 
 
     def insert(self, **kwargs): #there are 3 insert functions???
