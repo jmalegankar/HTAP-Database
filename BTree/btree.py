@@ -1,31 +1,32 @@
 import sys
 
 class BTreeNode:
-  def __init__(self, lSize = None: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
-        self.count = 0
-        self.leafSize = lSize
-        self.parent = InternalNode()
-        self.leftSibling = BTreeNode()
-        self.rightSibling = BTreeNode()
+  def __init__(self, lSize = None, p = None, l = None, r = None):
+    self.count = 0
+    self.leafSize = lSize
+    self.parent = InternalNode()
+    self.leftSibling = BTreeNode()
+    self.rightSibling = BTreeNode()
   
   # set parent
-    def setParent(self, x):
-        self.parent = x
+  def setParent(self, x):
+    self.parent = x
   
   # set right sibling
-    def setRightSibling(self, x):
-        self.rightSibling = x
+  def setRightSibling(self, x):
+    self.rightSibling = x
   
   #set left sibling
-    def setLeftSibling(self, x):
-        self.leftSibling = x
+  def setLeftSibling(self, x):
+    self.leftSibling = x
+
 
 
 class InternalNode(BTreeNode):
-    def __init__(self, iSize = None : int, lSize = None: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
-        self.internalSize = iSize
-        self.keys = []
-        self.children = []
+  def __init__(self, iSize = None, lSize = None, p = None, l = None, r = None):
+    self.internalSize = iSize
+    self.keys = []
+    self.children = []
 
 
     def addPtr(self, ptr: BTreeNode, pos: int):
