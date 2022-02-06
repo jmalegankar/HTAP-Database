@@ -80,6 +80,7 @@ class InternalNode(BTreeNode):
             return self.children[0].getMinimum()
 
 
+<<<<<<< HEAD
     def insert(self, **kwargs): #there are 3 insert functions???
         if 'value' in kwargs:
             kvalue = kwargs.get('value')
@@ -137,6 +138,61 @@ class InternalNode(BTreeNode):
                 pos = self.count
         
             self.addToThis(knewNode, pos)
+=======
+    def insertValue(self, value): #there are 3 insert functions???
+      pos = 0
+      if self.keys[pos] > value:
+          for pos in range(self.bTNode.count - 1, 0, -1):
+              if self.keys[pos] > value:
+                  continue
+              else:
+                  break
+      last = self.children[pos].insert(value)
+      ptr = self.children[pos].insert(value)
+      
+      if not ptr :
+          return None
+
+      if self.bTNode.count < self.internalSize:
+          self.addToThis(ptr, pos + 1)
+          return None;
+      
+      last = self.addPtr(ptr, pos + 1)
+
+      if self.bTNode.left and self.bTNode.left.count < self.internalSize:
+          self.addToLeft(last)
+          return None
+      elif self.bTNode.right and self.bTNode.right.count < self.internalSize:
+          self.addToRight(ptr, last)
+          return None
+      else:
+          return self.split(last)
+
+    def insertOldRoot(self, oldRoot, node2):
+      self.children[0] = oldRoot
+      self.children[1] = node2
+      self.keys[0] = oldRoot.getMinimum()
+      self.keys[1] = node2.getMinimum()
+      self.bTNode.count = 2
+
+      self.children[0].setLeftSibling(None)
+      self.children[0].setRightSibling(self.children[1])
+      self.children[1].setLeftSibling(self.children[0])
+      self.children[1].setRightSibling(None)
+
+      oldRoot.setParent(self)
+      node2.setParent(self)
+
+    def insertNewNode(self, newNode):
+      pos = 0
+
+      if newNode.getMinimum() <= self.keys[0]:
+          pos = 0
+      else:
+          pos = self.bTNnode.count
+  
+      self.addToThis(newNode, pos)
+>>>>>>> 7cb561d93b585da023c2c835ee1ea70132d8671e
 
 
 
