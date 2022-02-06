@@ -1,5 +1,3 @@
-import sys
-
 class BTreeNode:
   def __init__(self, lSize = None, p = None, l = None, r = None):
     self.count = 0
