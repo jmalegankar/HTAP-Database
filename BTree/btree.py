@@ -9,7 +9,7 @@ class BTree:
   def insert(self, value):
     ptr = self.root.insert(value)
     if (ptr):
-      iPtr = InternalNode(self.internalSize, self.leafsize)
+      iPtr = InternalNode(self.internalSize, self.leafSize)
       iPtr.insert(self.root, ptr)
       self.root = iPtr
   
@@ -288,9 +288,11 @@ class LeafNode:
             self.bTNode.parent.resetMinimum(self.bTNode.parent)
       
     def addToThis(self, value):
-        for i in range( (self.bTNode).count - 1, 0 , -1): 
-            if self.values[i] > value:
-                self.values[i+1] = self.values[i]
+        print(self.values[0])
+        if self.values[i] > value:
+          for i in range( (self.bTNode).count - 1, 0 , -1 ): 
+              if self.values[i] > value:
+                  self.values[i+1] = self.values[i]
         
         self.values[i+1] = value;
         self.bTNode.count = self.bTNode.count + 1
