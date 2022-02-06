@@ -1,12 +1,12 @@
 import sys
 
 class BTreeNode:
-  def __init__(self, lSize: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
+  def __init__(self, lSize = None: int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
         self.count = 0
         self.leafSize = lSize
-        self.parent = p
-        self.leftSibling = l
-        self.rightSibling = r
+        self.parent = InternalNode(lSize)
+        self.leftSibling = BTreeNode(lSize)
+        self.rightSibling = BTreeNode(lSize)
   
   # set parent
     def setParent(self, x):
