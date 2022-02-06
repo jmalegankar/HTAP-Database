@@ -60,14 +60,18 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
+    
+    """
+    A B C
+    1 2 3
+    2 2 4
+    """
 
     def select(self, index_value, index_column, query_columns):
         rid=self.table.get_key(index_value)
         #rid=self.table.index.locate(index_column,index_value)
         page_range_number = get_page_range_number(rid)
-        return (self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))
-
-        pass
+        return [Record(rid, self.table.key, self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))]
 
     """
     # Update a record with specified key and columns

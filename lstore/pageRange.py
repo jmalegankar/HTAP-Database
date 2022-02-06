@@ -107,10 +107,8 @@ class PageRange:
             return None
     
         if next_rid != 0:
-            schema=[int(i) for i in bin(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3))[2:]]
- 
-
-            next_rec=self.get_withRID(next_rid,Q_col,True)
+            schema = [int(i) for i in bin(self.arr_of_tail_pages[get_page_number(next_rid)].get(get_physical_page_offset(next_rid),3))[2:].zfill(self.num_of_columns)] # .zfill(self.num_of_columns)
+            next_rec = self.get_withRID(next_rid,Q_col,True)
 
             for count,change in enumerate(schema):
                 if change==1 and Q_col[count]==1:
