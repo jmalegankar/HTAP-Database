@@ -218,13 +218,14 @@ class InternalNode(BTreeNode):
                 
             if (self.parent and pos ==0 and self.count > 0):
                 self.parent.resetMinimum(self)
-        if (self.count ==1 and self.parent == None):
+        if (self.count == 1 and self.parent == None):
             return self.children[0]
         return None
 
     def removeChild(self, position):
-        ptr = self.children[position]
+        ptr = BTreeNode(self.children[position]) 
         self.count -= 1
+
         for i in range (position, self.count):
             self.children[i] = self.children[i+1]
             self.keys[i] = self.keys[i+1]
@@ -235,16 +236,16 @@ class InternalNode(BTreeNode):
 
     def removeWithLeftSibling(self, position):
         if (self.leftSibling.count > ((self.internalSize + 1)/2) ):
-            self.insert( self.left.removeChild(self.bTNode.left.count - 1) )
-            if (self.bTNode.parent):
-                self.bTNode.parent.resetMinimum(self)
+            self.insert(self.leftSibling.removeChild(self.leftSibling.count - 1) )
+            if (self.parent):
+                self.parent.resetMinimum(self)
             return None;
         else:
-            for i in range(0, self.bTNode.count):
-                self.bTNode.left.insert(self.children[i])
-            self.bTNode.left.setRightSibling(self.bTNode.right)
-            if (self.bTNode.right):
-                self.bTNode.right.setLeftSibling(self.bTNode.left)
+            for i in range(0, self.count):
+                self.leftSibling.insert(self.children[i])
+            self.leftSibling.setRightSibling(self.rightSibling)
+            if (self.rightSibling):
+                self.rightSibling.setLeftSibling(self.leftSibling)
             return self
 
     def removeWithRightSibling(self, position):
