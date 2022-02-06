@@ -85,22 +85,22 @@ class InternalNode(BTreeNode):
                   continue
               else:
                   break
-      last = self.children[pos].insertValue(value)
-      ptr = self.children[pos].insertValue(value)
-      
+      last = BTreeNode(self.children[pos].insertValue(value)) 
+      ptr =  BTreeNode(self.children[pos].insertValue(value))    
+       
       if not ptr :
           return None
 
-      if self.bTNode.count < self.internalSize:
+      if self.count < self.internalSize:
           self.addToThis(ptr, pos + 1)
           return None;
       
       last = self.addPtr(ptr, pos + 1)
 
-      if self.bTNode.left and self.bTNode.left.count < self.internalSize:
+      if self.leftSibling and self.leftSibling.count < self.internalSize:
           self.addToLeft(last)
           return None
-      elif self.bTNode.right and self.bTNode.right.count < self.internalSize:
+      elif self.rightSibling and self.rightSibling.count < self.internalSize:
           self.addToRight(ptr, last)
           return None
       else:
@@ -127,7 +127,7 @@ class InternalNode(BTreeNode):
       if newNode.getMinimum() <= self.keys[0]:
           pos = 0
       else:
-          pos = self.bTNnode.count
+          pos = self.count
   
       self.addToThis(newNode, pos)
 
