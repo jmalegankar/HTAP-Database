@@ -24,7 +24,6 @@ class BTreeNode:
 class InternalNode(BTreeNode):
     def __init__(self, iSize:int, lSize:int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
         self.internalSize = iSize
-        self.bTNode = BTreeNode(lSize, p, l, r)
         self.keys = []
         self.children = []
 
@@ -32,9 +31,9 @@ class InternalNode(BTreeNode):
     def addPtr(self, ptr: BTreeNode, pos: int):
         if (pos == self.internalSize):
             return ptr
-        last = BTreeNode(self.children[self.bTNode.count - 1])
+        last = BTreeNode(self.children[self.count - 1])
     
-        for i in range(self.bTNode.count - 2, pos, -1):
+        for i in range(self.count - 2, pos, -1):
             self.children[i + 1] = self.children[i]
             self.keys[i + 1] = self.keys[i]
         
@@ -46,38 +45,38 @@ class InternalNode(BTreeNode):
 
     def addToLeft(self, last: BTreeNode):
         self.leftSibling.insert(children[0])
-        for i in range(0, self.bTNode.count-1):
+        for i in range(0, self.count-1):
             self.children[i] = self.children[i+1]
             self.keys[i] = self.keys[i+1]
 
-        self.children[self.bTNode.count -1] = last
-        self.keys[self.bTNode.count-1] = last.getMinimum() 
+        self.children[self.count -1] = last
+        self.keys[self.count-1] = last.getMinimum() 
         last.setParent(self)
-        if (self.bTNode.parent):
-            self.bTNode.parent.resetMinimum(self)
+        if (self.parent):
+            self.parent.resetMinimum(self)
 
     def addToRight(self, ptr: BTreeNode, last:BTreeNode):
         rightSibling.insert(last)
-        if(ptr == self.children[0] and self.bTNode.parent):
-            self.bTNode.parent.resetMinimum(self)
+        if(ptr == self.children[0] and self.parent):
+            self.parent.resetMinimum(self)
 
     def addToThis(self, ptr: BTreeNode, pos: int):
-        for i in range(self.bTNode.count-1, pos, -1):
+        for i in range(self.count-1, pos, -1):
             self.children[i+1] = self.children[i]
             self.keys[i+1] = self.keys[i]
         self.children[pos] = ptr
         self.keys[pos] = ptr.getMinimum()
-        self.bTNode.count += 1
+        self.count += 1
         ptr.setParent(self)
-        if (pos==0 and self.bTNode.parent):
-            self.bTNode.parent.resetMinimum(self)
+        if (pos==0 and self.parent):
+            self.parent.resetMinimum(self)
 
     def getMaximum(self): 
-        if (self.bTNode.count > 0):
-            return self.children[self.bTNode.count-1].getMaximum()
+        if (self.count > 0):
+            return self.children[self.count-1].getMaximum()
 
     def getMinimum(self):
-        if (self.bTNode.count > 0):
+        if (self.count > 0):
             return self.children[0].getMinimum()
 
 
@@ -106,7 +105,7 @@ class InternalNode(BTreeNode):
             if self.bTNode.left and self.bTNode.left.count < self.internalSize:
                 self.addToLeft(last)
                 return None
-            elif self.bTNode.right and self.bTNode.right.count < self.internalSize:
+            elif self.rightSibling and self.bTNode.right.count < self.internalSize:
                 self.addToRight(ptr, last)
                 return None
             else:
@@ -135,7 +134,7 @@ class InternalNode(BTreeNode):
             if knewNode.getMinimum() <= self.keys[0]:
                 pos = 0
             else:
-                pos = self.bTNnode.count
+                pos = self.count
         
             self.addToThis(knewNode, pos)
 
@@ -143,44 +142,44 @@ class InternalNode(BTreeNode):
 
     def remove(self, value):
         pos, i = 0
-        for pos in range(self.bTNode.count-1, 0, -1):
+        for pos in range(self.count-1, 0, -1):
             if self.keys[pos] > value:
                 continue
             else:
                 break
-        ptr = self.children[pos].remove(value) #??
+        ptr = BTreeNode(self.children[pos].remove(value))
         if ptr:
             ptr = None
-            self.bTNode.count -= 1
-            for i in range(pos, self.bTNode.count):
+            self.count -= 1
+            for i in range(pos, self.count):
                 self.children[i] = self.children[i+1]
                 self.keys[i] = self.keys[i+1]
-            if (self.bTNode.count < ((self.internalSize +1)/2) or self.bTNode.count == 1):
-                if (self.bTNode.left):
+            if (self.count < ((self.internalSize +1)/2) or self.count == 1):
+                if (self.leftSibling):
                     return self.removeWithLeftSibling()
-                elif (self.bTNode.right):
+                elif (self.rightSibling):
                     return self.removeWithRightSibling(pos)
                 
-            if (self.bTNode.parent and pos ==0 and self.bTNode.count > 0):
-                self.bTNode.parent.resetMinimum(self)
-        if (self.bTNode.count ==1 and self.bTNode.parent ==None):
+            if (self.parent and pos ==0 and self.count > 0):
+                self.parent.resetMinimum(self)
+        if (self.count ==1 and self.parent == None):
             return self.children[0]
         return None
 
     def removeChild(self, position):
         ptr = self.children[position]
-        self.bTNode.count -= 1
-        for i in range (position, self.bTNode.count):
+        self.count -= 1
+        for i in range (position, self.count):
             self.children[i] = self.children[i+1]
             self.keys[i] = self.keys[i+1]
 
-        if (position == 0 and self.bTNode.parent):
-            self.bTNode.parent.resetMinimum(self)
+        if (position == 0 and self.parent):
+            self.parent.resetMinimum(self)
         return ptr
 
     def removeWithLeftSibling(self, position):
-        if (self.bTNode.left.count > ((self.internalSize + 1)/2) ):
-            self.insert( self.bTNode.left.removeChild(self.bTNode.left.count - 1) )
+        if (self.leftSibling.count > ((self.internalSize + 1)/2) ):
+            self.insert( self.left.removeChild(self.bTNode.left.count - 1) )
             if (self.bTNode.parent):
                 self.bTNode.parent.resetMinimum(self)
             return None;
