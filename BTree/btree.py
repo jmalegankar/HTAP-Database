@@ -21,7 +21,7 @@ class BTreeNode:
         self.left = x
 
 
-class InternalNode:
+class InternalNode(BTreeNode):
     def __init__(self, iSize:int, lSize:int, p = None: InternalNode, l = None : BTreeNode, r = None: BTreeNode):
         self.internalSize = iSize
         self.bTNode = BTreeNode(lSize, p, l, r)
@@ -45,6 +45,7 @@ class InternalNode:
 
 
     def addToLeft(self, last):
+        leftSibling = InternalNode()
         for i in range(0, self.bTNode.count-1):
             self.children[i] = self.children[i+1]
             self.keys[i] = self.keys[i+1]
