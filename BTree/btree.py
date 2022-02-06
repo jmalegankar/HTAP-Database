@@ -80,70 +80,10 @@ class InternalNode(BTreeNode):
         if (self.count > 0):
             return self.children[0].getMinimum()
 
-
-<<<<<<< HEAD
-    def insert(self, **kwargs): #there are 3 insert functions???
-        if 'value' in kwargs:
-            kvalue = kwargs.get('value')
-            pos = 0
-            if self.keys[pos] > kvalue:
-                for pos in range(self.bTNode.count - 1, 0, -1):
-                    if self.keys[pos] > kvalue:
-                        continue
-                    else:
-                        break
-            last = self.children[pos].insert(kvalue)
-            ptr = self.children[pos].insert(kvalue)
-            
-            if not ptr :
-                return None
-
-            if self.bTNode.count < self.internalSize:
-                self.addToThis(ptr, pos + 1)
-                return None;
-            
-            last = self.addPtr(ptr, pos + 1)
-
-            if self.bTNode.left and self.bTNode.left.count < self.internalSize:
-                self.addToLeft(last)
-                return None
-            elif self.rightSibling and self.bTNode.right.count < self.internalSize:
-                self.addToRight(ptr, last)
-                return None
-            else:
-                return self.split(last)
-
-        if 'oldRoot' in kwargs:
-            koldRoot = kwargs.get('oldRoot')
-            knode2 = kwargs.get('node2')
-            self.children[0] = koldRoot
-            self.children[1] = knode2
-            self.keys[0] = koldRoot.getMinimum()
-            self.keys[1] = knode2.getMinimum()
-            self.bTNode.count = 2
-
-            self.children[0].setLeftSibling(None)
-            self.children[0].setRightSibling(self.children[1])
-            self.children[1].setLeftSibling(self.children[0])
-            self.children[1].setRightSibling(None)
-
-            koldRoot.setParent(self)
-            knode2.setParent(self)
-        if 'newNode' in kwargs:
-            knewNode = kwargs.get('newNode')
-            pos = 0
-    
-            if knewNode.getMinimum() <= self.keys[0]:
-                pos = 0
-            else:
-                pos = self.count
-        
-            self.addToThis(knewNode, pos)
-
     def insertValue(self, value): #there are 3 insert functions???
       pos = 0
       if self.keys[pos] > value:
-          for pos in range(self.bTNode.count - 1, 0, -1):
+          for pos in range(self.count - 1, 0, -1):
               if self.keys[pos] > value:
                   continue
               else:
