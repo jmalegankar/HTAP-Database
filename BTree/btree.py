@@ -1,3 +1,7 @@
+import queue
+
+
+
 class BTreeNode():
   pass
 class InternalNode(BTreeNode):
@@ -363,6 +367,21 @@ class LeafNode(BTreeNode):
     for i in range(0, self.count):
         print(self.values[i] + ' ')
 
+class MyQueue():
+    # Using Python Lists as a Queue
+    def __init__(self):
+        self.queue = []
+ 
+    def enqueue(self, value):
+        # Inserting to the end of the queue
+        self.queue.append(value)
+ 
+    def dequeue(self):
+         # Remove the furthest element from the top,
+         # since the Queue is a FIFO structure
+         return self.queue.pop(0)
+
+
 class BTree:
     def __init__(self, iSize: int, lSize: int):
         self.internalSize = iSize
@@ -382,3 +401,25 @@ class BTree:
             self.root = None
             self.root = ptr
             self.root = self.root.setParent(None)
+
+    def print_tree(self):
+        q = queue.Queue()
+        q = queue.Queue(max_capacity)
+        q.put(self.root)
+
+        while(q.qsize):
+            x = queue.get()
+            print(x)
+
+
+
+
+
+
+
+
+
+
+
+
+
