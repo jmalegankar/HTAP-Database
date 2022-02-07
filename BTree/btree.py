@@ -1,7 +1,5 @@
 import queue
 
-
-
 class BTreeNode():
   pass
 class InternalNode(BTreeNode):
@@ -403,13 +401,10 @@ class BTree:
             self.root = self.root.setParent(None)
 
     def print_tree(self):
-        q = queue.Queue()
-        q = queue.Queue(max_capacity)
-        q.put(self.root)
-
-        while(q.qsize):
-            x = queue.get()
-            print(x)
+        q = MyQueue()
+        q.enqueue(self.root)
+        x = q.dequeue(self.root)
+        print(x)
 
 
 
