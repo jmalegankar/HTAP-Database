@@ -72,7 +72,6 @@ for key in records:
             # print('update on', original, 'and', updated_columns, ':', record)
         updated_columns[i] = None
 
-"""
 keys = sorted(list(records.keys()))
 # aggregate on every column 
 for c in range(0, grades_table.num_columns):
@@ -86,4 +85,3 @@ for c in range(0, grades_table.num_columns):
         else:
             pass
             # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
-"""

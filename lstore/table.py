@@ -24,7 +24,7 @@ class Table:
         self.page_ranges = []
         self.page_range_number = -1
         self.index = Index(self)
-        self.key_index = {} # map key to RID
+        self.index.create_all_index()
         pass
         
     
@@ -36,19 +36,6 @@ class Table:
         for page_range in self.page_ranges:
             string += str(page_range) + '\n'
         return string
-
-
-    def set_key(self, key, rid):
-        self.key_index[key] = rid
-
-
-    def get_key(self, key):
-        return self.key_index[key] if key in self.key_index else None
-
-
-    def delete_key(self, key):
-        del self.key_index[key]
-
 
     def create_a_new_page_range(self):
         # WIP
@@ -74,3 +61,4 @@ class Table:
         print("merge is happening")
         pass
  
+        

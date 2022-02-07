@@ -19,7 +19,7 @@ class TestPages(unittest.TestCase):
 		# Test First Record
 		self.assertEqual(basepage.get_next_rec_num(), 0)
 		basepage.write(Record(0, 0, [123, 321])) # set first column to 123 and second to 321
-		self.assertEqual(basepage.get(0, 2), int(start)) # check internal column (timestamp)
+		self.assertTrue(abs(basepage.get(0, 2) - int(start)) <= 1) # check internal column (timestamp)
 		self.assertEqual(basepage.get(0, 4), 123)
 		self.assertEqual(basepage.get(0, 5), 321)
 		
@@ -171,35 +171,17 @@ class TestPages(unittest.TestCase):
 		query = Query(grades_table)
 		
 		for i in range(10000):
-			query.insert(i, i+1, i+2, i+3, i+4)
+			self.assertEqual(query.insert(i, i+1, i+2, i+3, i+4), True)
+
 		for i in range(10000):
-			result = query.select(i, 0, [1] * 5)
-			self.assertEqual(len(result), 1)
-			self.assertEqual(result[0].columns, [i, i+1, i+2, i+3, i+4])
-
-
-	def test_query_update(self):
-		db = Database()
-		db.create_table('Test', 3, 0)
-		table = db.get_table('Test')
-		query = Query(table)
+			results = query.select(i, 0, [1] * 5)
+			self.assertEqual(len(results), 1)
+			self.assertEqual(results[0].columns, [i, i+1, i+2, i+3, i+4])
 		
-		query.insert(1, 2, 3)
-		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 2, 3])
-		
-		query.update(1, None, 9, None)
-		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 9, 3])
-		
-		query.update(1, None, None, 10)
-		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 9, 10])
-		
-		query.increment(1, 1)
-		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 10, 10])
-
-		query.update(1, 8, None, None)
-		self.assertEqual(query.select(8, 0, [1, 1, 1])[0].columns, [8, 10, 10])
-		self.assertEqual(query.select(1, 0, [1, 1, 1]), False)
-
+		for i in range(10000):
+			results = query.select(i+2, 2, [1] * 5)
+			self.assertEqual(len(results), 1)
+			self.assertEqual(results[0].columns, [i, i+1, i+2, i+3, i+4])
 
 	def test_query_delete(self):
 		db = Database()
@@ -226,12 +208,153 @@ class TestPages(unittest.TestCase):
 		
 		# select deleted keys should return None
 		for key in keys:
-			self.assertEqual(query.select(key, 0, [1, 1, 1]), False)
+			self.assertEqual(query.select(key, 0, [1, 1, 1]), [])
 		
 		# delete deleted keys should return False
 		for key in keys:
 			self.assertEqual(query.delete(key), False)
 
+	def test_query_update(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		
+		self.assertFalse(query.update(0, 1, 1, 1))
+		
+		self.assertTrue(query.insert(1, 2, 3))
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 2, 3])
+		
+		self.assertFalse(query.update(0, 1, 1, 1))
+		
+		self.assertTrue(query.update(1, None, 9, None))
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 9, 3])
+		
+		self.assertTrue(query.update(1, None, None, 10))
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 9, 10])
+		
+		self.assertTrue(query.increment(1, 1))
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 10, 10])
+	
+		self.assertTrue(query.update(1, 8, None, None))
+		self.assertEqual(query.select(8, 0, [1, 1, 1])[0].columns, [8, 10, 10])
+		self.assertEqual(query.select(1, 0, [1, 1, 1]), [])
+
+	def test_query_sum(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		
+		keys = random.sample(range(-100000000, 100000000), 10000)
+		
+		sum_first_col = 0
+		sum_second_col = 0
+		sum_third_col = 0
+		
+		for key in keys:
+			self.assertEqual(query.insert(key, key * 2, key * 3), True)
+			if -100000 <= key <= 100000:
+				sum_first_col += key
+				sum_second_col += key * 2
+				sum_third_col += key * 3
+		
+		self.assertEqual(query.sum(-100000, 100000, 0), sum_first_col)
+		self.assertEqual(query.sum(-100000, 100000, 1), sum_second_col)
+		self.assertEqual(query.sum(-100000, 100000, 2), sum_third_col)
+		
+		table2 = db.create_table('Test2', 3, 0)
+		query2 = Query(table2)
+		
+		self.assertEqual(query2.insert(100, 200, 300), True)
+		self.assertEqual(query2.insert(1000, 2000, 3000), True)
+		self.assertEqual(query2.sum(100, 1000, 2), 3300)
+		
+		self.assertEqual(query2.update(1000, None, 1000, None), True)
+		self.assertEqual(query2.sum(100, 1000, 2), 3300)
+		
+		self.assertEqual(query2.update(1000, None, None, 2000), True)
+		self.assertEqual(query2.sum(100, 1000, 2), 2300)
+		
+		self.assertEqual(query2.update(1000, 3000, None, None), True)
+		self.assertEqual(query2.sum(100, 1000, 2), 300)
+		
+		self.assertEqual(query2.sum(100, 3000, 2), 2300)
+	
+	def test_select_duplicate(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		
+		self.assertEqual(query.insert(0, 1000, 2000), True)
+		self.assertEqual(query.insert(1, 100, 200), True)
+		self.assertEqual(query.insert(1, 100, 200), False)
+		self.assertEqual(query.insert(2, 100, 300), True)
+		self.assertEqual(query.insert(3, 300, 3000), True)
+		
+		records = query.select(100, 1, [1, 1, 1])
+		self.assertEqual(len(records), 2)
+		
+		for record in records:
+			self.assertTrue(record.columns == [1, 100, 200] or record.columns == [2, 100, 300])
+		
+		self.assertEqual(query.update(3, None, 100, None), True)
+		
+		records = query.select(100, 1, [1, 1, 1])
+		self.assertEqual(len(records), 3)
+		
+		for record in records:
+			if record.rid == 1:
+				self.assertEqual(record.columns, [1, 100, 200])
+			elif record.rid == 2:
+				self.assertEqual(record.columns, [2, 100, 300])
+			else:
+				self.assertEqual(record.columns, [3, 100, 3000])
+		
+		self.assertEqual(query.sum(1, 3, 1), 300)
+		self.assertEqual(query.sum(1, 3, 2), 3500)
+		
+		
+		
+		records = query.select(4, 0, [1, 1, 1])
+		self.assertEqual(len(records), 0)
+		
+		records = query.select(5, 0, [1, 1, 1])
+		self.assertEqual(len(records), 0)
+		
+		self.assertEqual(query.insert(4, 44, 444), True)
+		
+		records = query.select(4, 0, [1, 1, 1])
+		self.assertEqual(len(records), 1)
+		
+		self.assertNotEqual(query.sum(1, 4, 2), 3500)
+		
+		
+		self.assertEqual(query.update(4, 5, None, None), True)
+		
+		records = query.select(4, 0, [1, 1, 1])
+		self.assertEqual(len(records), 0)
+		
+		records = query.select(5, 0, [1, 1, 1])
+		self.assertEqual(len(records), 1)
+		
+		self.assertEqual(query.sum(1, 3, 1), 300)
+		self.assertEqual(query.sum(1, 3, 2), 3500)
+		self.assertEqual(query.sum(1, 4, 2), 3500)
+		self.assertNotEqual(query.sum(1, 5, 2), 3500)
+		self.assertEqual(query.sum(1, 5, 2), 3500 + 444)
+		
+		self.assertEqual(query.update(5, None, None, None), True)
+		self.assertEqual(query.sum(1, 3, 2), 3500)
+		self.assertEqual(query.sum(1, 4, 2), 3500)
+		self.assertNotEqual(query.sum(1, 5, 2), 3500)
+		self.assertEqual(query.sum(1, 5, 2), 3500 + 444)
+		
+		self.assertEqual(query.update(5, None, None, 12345), True)
+		self.assertEqual(query.sum(1, 5, 2), 3500 + 12345)
+		
 
 if __name__ == '__main__':
 	unittest.main()
+	

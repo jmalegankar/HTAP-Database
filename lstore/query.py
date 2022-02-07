@@ -24,14 +24,19 @@ class Query:
     """
 
     def delete(self, primary_key):
+        rid = self.table.index.locate(self.table.key, primary_key)
+        if len(rid) != 1:
+            return False
+        rid = rid[0]
+
         try:
-            rid = self.table.get_key(primary_key)
-            if rid == None:
-                return False
-    
-            self.table.delete_key(primary_key)
             page_range_number = get_page_range_number(rid)
+            
+            data = self.table.page_ranges[page_range_number].get_withRID(rid, [1] * self.table.num_columns)
             self.table.page_ranges[page_range_number].delete_withRID(rid)
+            
+            for col, value in enumerate(data):
+                self.table.index.remove(col, value, rid)
         except Exception as e:
             return False
         else:
@@ -46,10 +51,18 @@ class Query:
     def insert(self, *columns):
         if len(columns) != self.table.num_columns:
             return False
+        
+        if len(self.table.index.locate(self.table.key, columns[self.table.key])) > 0:
+            # Primary key must be unique
+            return False
     
         page_range_number = self.table.get_next_page_range_number()
         rid = self.table.page_ranges[page_range_number].write(*columns)
-        self.table.set_key(columns[self.table.key], rid)
+        
+        # Set indices for each column
+        for col, value in enumerate(columns):
+            self.table.index.set(col, value, rid)
+
         return True
 
     """
@@ -64,13 +77,13 @@ class Query:
 
     def select(self, index_value, index_column, query_columns):
         try:
-            rid = self.table.get_key(index_value)
-            if rid == None:
-                return False
-
-            #rid=self.table.index.locate(index_column,index_value)
-            page_range_number = get_page_range_number(rid)
-            return [Record(rid, self.table.key, self.table.page_ranges[page_range_number].get_withRID(rid,query_columns))]
+            rids = self.table.index.locate(index_column, index_value)
+            
+            results = []
+            for rid in rids:
+                page_range_number = get_page_range_number(rid)
+                results.append(Record(rid, self.table.key, self.table.page_ranges[page_range_number].get_withRID(rid,query_columns)))
+            return results
         except:
             return False
 
@@ -81,20 +94,24 @@ class Query:
     """
 
     def update(self, primary_key, *columns):
+        rid = self.table.index.locate(self.table.key, primary_key)
+        if len(rid) != 1:
+            return False
+        rid = rid[0]
+        
         try:
-            rid = self.table.get_key(primary_key)
-            if rid == None:
-                return False
             page_range_number = get_page_range_number(rid)
+            
+            data = self.table.page_ranges[page_range_number].get_withRID(rid, [1] * self.table.num_columns)
             self.table.page_ranges[page_range_number].update(rid, *columns)
+            
+            for col, value in enumerate(columns):
+                if value is not None:
+                    self.table.index.remove(col, data[col], rid)
+                    self.table.index.set(col, value, rid)
         except Exception as e:
             return False
         else:
-            # Update Index Here
-            if columns[self.table.key] is not None:
-                # Need to update our primary_key, delete old index, create new one
-                self.table.delete_key(primary_key)
-                self.table.set_key(columns[self.table.key], rid)
             return True
         
 
@@ -108,7 +125,17 @@ class Query:
     """
 
     def sum(self, start_range, end_range, aggregate_column_index):
-        pass
+        try:
+            rids = self.table.index.locate_range(start_range, end_range, self.table.key)
+            total = 0
+            
+            query_columns = [0] * self.table.num_columns
+            query_columns[aggregate_column_index] = 1
+            for rid in rids:
+                total += self.select(rid, self.table.key, query_columns)[0][aggregate_column_index]
+            return total
+        except Exception as e:
+            return False
 
     """
     incremenets one column of the record
