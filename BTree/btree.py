@@ -7,13 +7,13 @@ class InternalNode(BTreeNode):
 class LeafNode(BTreeNode):
   pass
 
-class BTreeNode:
-  def __init__(self, lSize = 0 , p = InternalNode(), l = BTreeNode(), r = BTreeNode()):
+class BTreeNode(object):
+  def __init__(self, lSize = 0 , p = None, l = None, r = None):
     self.count = 0
     self.leafSize = lSize
-    self.parent = p
-    self.leftSibling = l
-    self.rightSibling = r
+    self.parent: InternalNode = p
+    self.leftSibling: BTreeNode = l
+    self.rightSibling: BTreeNode = r
   
   # set parent
   def setParent(self, x):
@@ -28,11 +28,11 @@ class BTreeNode:
     self.leftSibling = x
 
 class InternalNode(BTreeNode):
-  def __init__(self, iSize = 0, lSize = 0, p = InternalNode(), l = BTreeNode(), r = BTreeNode()):
+  def __init__(self, iSize = 0,lSize = 0 , p = None, l = None, r = None):
     BTreeNode.__init__(self, lSize, p, l , r)
     self.internalSize = iSize
-    self.keys = []
-    self.children = []
+    self.keys = [int]* internalSize
+    self.children = [BTreeNode]*iSize
 
   def addPtr(self, ptr: BTreeNode, pos: int):
       if (pos == self.internalSize):
@@ -225,9 +225,9 @@ class InternalNode(BTreeNode):
         
 
 class LeafNode(BTreeNode):
-  def __init__(self, lSize, p = InternalNode(), l = BTreeNode(), r = BTreeNode()):
+  def __init__(self, lSize = 0 , p = None, l = None, r = None):
     BTreeNode.__init__(self, lSize, p, l , r)
-    self.values = [None] * 5000
+    self.values = [int] * lSize
     
   def addToLeft(self, value, last):
     self.leftSibling.insertValue(value[0])
@@ -360,11 +360,6 @@ class LeafNode(BTreeNode):
   
     return newPtr
 
-  def print_LeafNode(self, address_queue):
-    print("Leaf: ")
-    for i in range(0, self.count):
-        print(self.values[i] + ' ')
-
 class MyQueue():
     # Using Python Lists as a Queue
     def __init__(self):
@@ -380,7 +375,7 @@ class MyQueue():
          return self.queue.pop(0)
 
 
-class BTree:
+class BTree(object):
     def __init__(self, iSize: int, lSize: int):
         self.internalSize = iSize
         self.leafSize = lSize
