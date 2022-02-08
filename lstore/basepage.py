@@ -81,6 +81,10 @@ class BasePage:
 	
 	def get_user_cols(self, rec_num):
 		return [self.get(rec_num, 4 + i) for i in range(self.num_user_columns)]
+	
+	
+	def get_all_cols(self, rec_num):
+		return [self.get(rec_num, i) for i in range(self.num_columns)]
 
 	"""
 	Write a record to the physical page
@@ -110,16 +114,14 @@ class BasePage:
 
 	# takes in a record and writes it
 	# used to update meaning making a new tail record
-	def update(self, indir, record: Record):
+	def update(self, base_rid, record: Record):
 		assert len(record.columns) == self.num_user_columns
 		
-		self.phys_pages[0].write(indir)
+		self.phys_pages[0].write(base_rid)
 		self.phys_pages[1].write(record.rid)
 		self.phys_pages[2].write(int(time.time()))
 
-
-
-		schema=0
+		schema = 0
 		for idx in range(self.num_user_columns):
 			# creating a schema with bitwise operators of what is updated
 			# note this is not a great way of creating a schema as it 
@@ -127,21 +129,30 @@ class BasePage:
 			# might want to refactor a way later.
 			# rn since we have 64 bits can have 63 columns i believe but I def
 			# want to change this logic later on but it works rn
-			if record.columns[idx]!=None:
-				schema= ( schema | (1 << self.num_user_columns-(idx+1)))
+			if record.columns[idx] != None:
+				schema = ( schema | (1 << self.num_user_columns-(idx+1)))
 				self.phys_pages[idx + 4].write(record.columns[idx])
 			else:
 				self.phys_pages[idx + 4].write(0)
 		self.phys_pages[3].write(schema)
 		self.num_records += 1
+		return schema
 
 	
-	def tail_update(self,offset,columns):
-		assert len(columns) == self.num_user_columns
-		schema=self.get(offset,3)
-
-		for idx in range(self.num_user_columns):
-			if columns[idx]!=None:
-				schema= ( schema | (1 << self.num_user_columns-(idx+1)))
-				self.phys_pages[idx + 4].set(offset,columns[idx])
-		self.phys_pages[3].set(offset,schema)
+	def tail_update(self, previous_data, record: Record):
+		assert len(record.columns) == self.num_user_columns
+		
+		self.phys_pages[0].write(previous_data[1]) # indirection is previous tail RID
+		self.phys_pages[1].write(record.rid)
+		self.phys_pages[2].write(int(time.time()))
+		
+		schema = previous_data[3]
+		for index in range(self.num_user_columns):
+			if record.columns[index] is not None:
+				schema = (schema | (1 << self.num_user_columns - (index + 1)))
+				self.phys_pages[index + 4].write(record.columns[index])
+			else:
+				self.phys_pages[index + 4].write(previous_data[index + 4])
+		self.phys_pages[3].write(schema)
+		self.num_records += 1
+		return schema

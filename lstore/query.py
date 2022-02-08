@@ -5,6 +5,8 @@ from lstore.parser import *
 
 
 class Query:
+    
+    __slots__ = 'table'
     """
     # Creates a Query object that can perform different queries on the specified table 
     Queries that fail must return False
@@ -100,16 +102,27 @@ class Query:
         rid = rid[0]
         
         try:
-            page_range_number = get_page_range_number(rid)
+            if columns[self.table.key] != None:
+                new_rid = self.table.index.locate(self.table.key, columns[self.table.key])
+                if len(new_rid) != 0:
+                    return False
             
-            data = self.table.page_ranges[page_range_number].get_withRID(rid, [1] * self.table.num_columns)
+            page_range_number = get_page_range_number(rid)
+            query_columns = []
+            
+            for column in columns:
+                if column == None:
+                    query_columns.append(0)
+                else:
+                    query_columns.append(1)
+                    
+            data = self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
             self.table.page_ranges[page_range_number].update(rid, *columns)
             
             for col, value in enumerate(columns):
                 if value is not None:
-                    self.table.index.remove(col, data[col], rid)
-                    self.table.index.set(col, value, rid)
-        except Exception as e:
+                    self.table.index.replace(col, data[col], value, rid)
+        except:
             return False
         else:
             return True

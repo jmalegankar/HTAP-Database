@@ -354,6 +354,31 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(query.update(5, None, None, 12345), True)
 		self.assertEqual(query.sum(1, 5, 2), 3500 + 12345)
 		
+	
+	def test_select_duplicate(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		query.insert(1, 2, 3)
+		query.insert(4, 5, 6)
+		
+		self.assertFalse(query.update(1, 4, None, None))
+		self.assertTrue(query.update(1, 7, None, None))
+		
+		self.assertFalse(query.insert(7, 8, 9))
+		self.assertTrue(query.insert(-10, -11, -12))
+		
+		self.assertFalse(query.update(-10, 7, None, None))
+		self.assertFalse(query.update(-10, 4, 1, 1))
+		self.assertFalse(query.update(4, -10, None, None))
+		self.assertTrue(query.update(4, -11, None, None))
+		self.assertTrue(query.update(-10, 4, 1, 1))
+		self.assertTrue(query.update(-11, -10, None, None))
+	
+		self.assertEqual(query.select(-10, 0, [1,1,1])[0].columns, [-10,5,6])
+		self.assertEqual(query.select(4, 0, [1,1,1])[0].columns, [4,1,1])
+		self.assertEqual(query.select(7, 0, [1,1,1])[0].columns, [7,2,3])
 
 if __name__ == '__main__':
 	unittest.main()

@@ -1,6 +1,8 @@
 from lstore.table import Table
 
 class Database():
+    
+    __slots__ = 'tables'
 
     def __init__(self):
         self.tables = {}

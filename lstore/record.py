@@ -3,6 +3,8 @@ class Record:
 	"""
 	For query
 	"""
+	
+	__slots__ = 'rid', 'key', 'columns'
 
 	def __init__(self, rid, key, columns):
 		self.rid = rid

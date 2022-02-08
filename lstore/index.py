@@ -5,6 +5,8 @@ from collections import defaultdict
 
 class Index:
 
+    __slots__ = 'indices'
+    
     def __init__(self, table):
         # One index for each table. All our empty initially.
         self.indices = [None] *  table.num_columns
@@ -39,6 +41,11 @@ class Index:
 #                   del self.indices[column][value]
         except:
             pass
+
+    
+    def replace(self, column, old_value, new_value, rid):
+        self.remove(column, old_value, rid)
+        self.set(column, new_value, rid)
 
     """
     # Returns the RIDs of all records with values in column "column" between "begin" and "end"

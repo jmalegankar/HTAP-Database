@@ -34,15 +34,30 @@ query2 = Query(table2)
 
 query2.insert(100, 200, 300)
 query2.insert(1000, 2000, 3000)
+query2.insert(1234, 5678, 9)
 print(query2.sum(100, 150, 2) == 300)
 
-query2.update(1000, None, 1000, None)
-print(query2.sum(100, 1000, 2) == 3300)
+print(query2.update(1000, None, 20000, None))
+print(query2.update(1000, None, None, 30000))
+print(query2.update(1000, None, None, 50000))
+print(query2.update(100, -100, None, None))
+print(query2.update(-100, -200, 10, None))
+print(query2.update(-200, None, 5, None))
 
-query2.update(1000, None, None, 2000)
-print(query2.sum(100, 1000, 2) == 2300)
 
-query2.update(1000, 3000, None, None)
+#print(query2.table)
 
-print(query2.sum(100, 1000, 2) == 300)
-print(query2.sum(100, 3000, 2) == 2300)
+print(query2.select(1000, 0, [1, 1, 1])[0])
+print(query2.select(-200, 0, [1, 1, 1])[0])
+
+print(query2.select(300, 2, [1, 1, 1])[0])
+
+
+#query2.delete(-200)
+query2.delete(1000)
+
+print(query2.update(1234, -200, 1, 1))
+
+print(query2.select(-200, 0, [1,1,1]))
+
+#print(query2.table)

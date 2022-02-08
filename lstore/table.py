@@ -20,7 +20,6 @@ class Table:
         self.name = name
         self.key = key
         self.num_columns = num_columns
-        self.page_directory = {}
         self.page_ranges = []
         self.page_range_number = -1
         self.index = Index(self)
@@ -38,7 +37,6 @@ class Table:
         return string
 
     def create_a_new_page_range(self):
-        # WIP
         self.page_range_number += 1
         self.page_ranges.append(PageRange(self.num_columns, self.page_range_number))
 
