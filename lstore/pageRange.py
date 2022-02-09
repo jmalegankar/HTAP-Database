@@ -109,11 +109,10 @@ class PageRange:
             return None
     
         if indirection != 0:
-            schema = [int(i) for i in bin(base_schema)[2:].zfill(self.num_of_columns)] # .zfill(self.num_of_columns)
             updated_record = self.get_withRID(indirection, Q_col, True)
 
-            for index, change in enumerate(schema):
-                if change == 1 and (Q_col == None or Q_col[index] == 1):
+            for index in range(self.num_of_columns):
+                if base_schema & (1 << (self.num_of_columns - index - 1)) and (Q_col == None or Q_col[index] == 1):
                     base_record[index] = updated_record[index]
 
         return base_record
