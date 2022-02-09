@@ -16,7 +16,7 @@ class Index:
     """
 
     def set(self, column, value, rid):
-        self.indices[column][value].append(rid)
+        self.indices[column][value].add(rid)
 
     """
     # returns the location of all records with the given value on column "column"
@@ -24,7 +24,7 @@ class Index:
 
     def locate(self, column, value):
         # TODO: Change it to B tree search given value
-        return self.indices[column][value]
+        return list(self.indices[column][value])
 
     """
     Remove index given column #, value (key of the dict/tree), rid is None will remove all, or just one
@@ -70,7 +70,7 @@ class Index:
 
     def create_index(self, column_number):
         # TODO: Change defaultdict to B tree
-        self.indices[column_number] = defaultdict(list)
+        self.indices[column_number] = defaultdict(set)
         return True
 
     """

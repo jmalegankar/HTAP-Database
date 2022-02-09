@@ -66,7 +66,10 @@ class BasePage:
 
 		# quicker setter to access page set
 	def set(self, rec_num, value, column):
-		return self.phys_pages[column].set(rec_num,value)
+		return self.phys_pages[column].set(rec_num, value)
+	
+	def get_and_set(self, rec_num, value, column):
+		return self.phys_pages[column].get_and_set(rec_num, value)
 
 	"""
 	Get multiple col

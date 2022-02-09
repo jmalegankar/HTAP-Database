@@ -109,11 +109,10 @@ class PageRange:
             return None
     
         if indirection != 0:
-            schema = [int(i) for i in bin(base_schema)[2:].zfill(self.num_of_columns)] # .zfill(self.num_of_columns)
             updated_record = self.get_withRID(indirection, Q_col, True)
 
-            for index, change in enumerate(schema):
-                if change == 1 and (Q_col == None or Q_col[index] == 1):
+            for index in range(self.num_of_columns):
+                if base_schema & (1 << (self.num_of_columns - index - 1)) and (Q_col == None or Q_col[index] == 1):
                     base_record[index] = updated_record[index]
 
         return base_record
@@ -128,8 +127,7 @@ class PageRange:
     """
 
     def get_withRID(self, rid, Q_col=None, isTail=False):
-        page_number = get_page_number(rid)
-        offset = get_physical_page_offset(rid)
+        page_number, offset = get_page_number_and_offset(rid)
         return self.get(page_number, offset, Q_col, isTail)
 
     """
@@ -138,8 +136,7 @@ class PageRange:
     """
 
     def get_tail_withRID(self, rid):
-        page_number = get_page_number(rid)
-        offset = get_physical_page_offset(rid)
+        page_number, offset = get_page_number_and_offset(rid)
         return self.arr_of_tail_pages[page_number].get_all_cols(offset)
     
     """
@@ -147,18 +144,13 @@ class PageRange:
     """
 
     def delete_withRID(self, rid):
-        base_page_number = get_page_number(rid)
-        base_offset = get_physical_page_offset(rid)
-        indirection = self.arr_of_base_pages[base_page_number].get(base_offset, 0)
-        
-        self.arr_of_base_pages[base_page_number].set(base_offset, 200000000, 0) # set indir to 200000000
+        base_page_number, base_offset = get_page_number_and_offset(rid)
+        indirection = self.arr_of_base_pages[base_page_number].get_and_set(base_offset, 200000000, 0) # set indir to 200000000
         
         while indirection != 200000000:
             if get_page_type(indirection) == 1:
-                tail_page_number = get_page_number(indirection)
-                tail_offset = get_physical_page_offset(indirection)
-                indirection = self.arr_of_tail_pages[tail_page_number].get(tail_offset, 0)
-                self.arr_of_tail_pages[tail_page_number].set(tail_offset, 200000000, 0)
+                tail_page_number, tail_offset = get_page_number_and_offset(indirection)
+                indirection = self.arr_of_tail_pages[tail_page_number].get_and_set(tail_offset, 200000000, 0)
             else:
                 break
 
@@ -173,8 +165,7 @@ class PageRange:
         if self.is_page_full(self.tail_page_number, True):
             self.create_a_new_page(True)
 
-        page_number = get_page_number(base_rid)
-        offset = get_physical_page_offset(base_rid)
+        page_number, offset = get_page_number_and_offset(base_rid)
 
         previous_tail_rid = self.arr_of_base_pages[page_number].get(offset, 0) # indirection aka previous tail RID
         new_tail_rid = create_rid(1, self.range_number, self.tail_page_number, self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()) # creates a tail_rid

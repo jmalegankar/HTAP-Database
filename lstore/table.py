@@ -35,6 +35,9 @@ class Table:
         for page_range in self.page_ranges:
             string += str(page_range) + '\n'
         return string
+    
+    def __repr__(self):
+        return self.__str__()
 
     def create_a_new_page_range(self):
         self.page_range_number += 1

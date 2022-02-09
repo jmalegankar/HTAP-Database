@@ -48,7 +48,7 @@ class Page:
     # in this implmentation we can switch to a variable length storage if we want but for now this was
     # easiest to do
     def write(self, value):
-        assert self.has_capacity()
+#       assert self.has_capacity()
         self.data[self.num_records * 8 : self.num_records * 8 + 8] = \
         value.to_bytes(8, 'big', signed=True)
         self.num_records += 1
@@ -56,11 +56,16 @@ class Page:
     # pass in the rec number we want. so rec 0 ..< 512
     # can aslso use rec offset which will probably be better tbh
     def get(self, rec_num):
-        assert 0 <= rec_num < 512
+#       assert 0 <= rec_num < 512
         return int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], "big", signed=True)
         
     #pass in rec number we want to change for updates
     def set(self, rec_num, value):
-        assert 0 <= rec_num < 512
-        self.data[rec_num * 8 : rec_num * 8 + 8] = \
-        value.to_bytes(8, 'big', signed=True)
+#       assert 0 <= rec_num < 512
+        self.data[rec_num * 8 : rec_num * 8 + 8] = value.to_bytes(8, 'big', signed=True)
+    
+    def get_and_set(self, rec_num, value):
+        old = int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], "big", signed=True)
+        self.data[rec_num * 8 : rec_num * 8 + 8] = value.to_bytes(8, 'big', signed=True)
+        return old
+    
