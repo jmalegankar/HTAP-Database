@@ -61,3 +61,5 @@ print(query2.update(1234, -200, 1, 1))
 print(query2.select(-200, 0, [1,1,1]))
 
 #print(query2.table)
+
+

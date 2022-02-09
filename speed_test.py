@@ -1,42 +1,27 @@
-from lstore.pageRange import PageRange
-import time
+from lstore.db import Database
+from lstore.query import Query
+from time import process_time
 import sys
 
-page_range_0 = PageRange(3, 0)
+db = Database()
+grades_table = db.create_table('Grades', 5, 0)
+query = Query(grades_table)
+keys = []
 
-page_range_0.write(0, 1, 2)
+insert_time_0 = process_time()
+for i in range(0, 10000):
+	query.insert(906659671 + i, 93, 0, 0, 0)
+	keys.append(906659671 + i)
+insert_time_1 = process_time()
 
-start = time.process_time()
-page_range_0.get_withRID(0,[1,1,1])
-end = time.process_time()
-print('0 Update Lookup Took: ', end - start)
+print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
 
+query.update(906659671, None, None, None, None, 1)
 
-page_range_0.update(0, 3, None, None)
-
-start = time.process_time()
-page_range_0.get_withRID(0,[1,1,1])
-end = time.process_time()
-
-print('1 Update Lookup Took: ', end - start)
-
-
-sys.setrecursionlimit(99999)
-
-start_update = time.process_time()
-for i in range(1000000):
-	page_range_0.update(0, i, None, None)
-page_range_0.update(0, i, 10, None)
-end_update = time.process_time()
-print('1M Update Took: ', end_update - start_update)
-
-
-
-# Read doesn't work for non-cumulative version
-
-start = time.process_time()
-page_range_0.get_withRID(0,[1,1,1])
-end = time.process_time()
-print('1M Update Lookup Took: ', end - start)
-
-print(page_range_0)
+for i in range(0, 10000):
+	query.update(906659671, None, i + 1, None, None, None)
+	
+select_one_0 = process_time()
+print(query.select(906659671, 0, [1,1,1,1,1]))
+select_one_1 = process_time()
+print("Select 1 record after 10k update took:  \t\t\t", select_one_1 - select_one_0)
