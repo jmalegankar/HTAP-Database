@@ -1,12 +1,15 @@
 """
-A data strucutre holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
+A data strucutre holding indices for various columns of a table.
+Key column should be indexd by default,
+other columns can be indexed through this object.
+Indices are usually B-Trees, but other data structures can be used as well.
 """
 from collections import defaultdict
 
 class Index:
 
-    __slots__ = 'indices'
-    
+    __slots__ = ('indices',)
+
     def __init__(self, table):
         # One index for each table. All our empty initially.
         self.indices = [None] *  table.num_columns
@@ -32,17 +35,14 @@ class Index:
 
     def remove(self, column, value, rid = None):
         try:
-            if rid == None:
+            if rid is None:
                 self.indices[column][value] = []
-#               del self.indices[column][value]
             else:
                 self.indices[column][value].remove(rid)
-#               if len(self.indices[column][value]) == 0:
-#                   del self.indices[column][value]
-        except:
+        except KeyError:
             pass
 
-    
+
     def replace(self, column, old_value, new_value, rid):
         self.remove(column, old_value, rid)
         self.set(column, new_value, rid)
@@ -53,12 +53,13 @@ class Index:
 
     def locate_range(self, begin, end, column):
         # TODO: Use B tree range given begin/end
-        return filter(lambda x: begin <= x <= end and len(self.indices[column][x]) > 0, self.indices[column])
+        return filter(lambda x: begin <= x <= end and
+                len(self.indices[column][x]) > 0, self.indices[column])
 
     """
     Create index for all columns
     """
-    
+
     def create_all_index(self):
         for i in range(len(self.indices)):
             self.create_index(i)
