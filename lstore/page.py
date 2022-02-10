@@ -36,4 +36,3 @@ class Page:
         old = int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], "big", signed=True)
         self.data[rec_num * 8 : rec_num * 8 + 8] = value.to_bytes(8, 'big', signed=True)
         return old
-    

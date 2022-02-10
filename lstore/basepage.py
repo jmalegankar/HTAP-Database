@@ -64,7 +64,10 @@ class BasePage:
 	def get(self, rec_num, column):
 		return self.phys_pages[column].get(rec_num)
 
-		# quicker setter to access page set
+	"""
+	quicker setter to access page set
+	"""
+
 	def set(self, rec_num, value, column):
 		return self.phys_pages[column].set(rec_num, value)
 
@@ -78,14 +81,13 @@ class BasePage:
 	"""
 
 	def get_cols(self, rec_num, columns):
-		assert 0 <= rec_num < self.num_records and len(columns) == self.num_user_columns
-		return [None if columns[i] == 0 else self.get(rec_num, 4 + i) for i in range(len(columns))]
+		return [None if v == 0 else self.phys_pages[4 + i].get(rec_num) for i, v in enumerate(columns)]
 
 	def get_user_cols(self, rec_num):
-		return [self.get(rec_num, 4 + i) for i in range(self.num_user_columns)]
+		return [self.phys_pages[4 + i].get(rec_num) for i in range(self.num_user_columns)]
 
 	def get_all_cols(self, rec_num):
-		return [self.get(rec_num, i) for i in range(self.num_columns)]
+		return [self.phys_pages[i].get(rec_num) for i in range(self.num_columns)]
 
 	"""
 	Write a record to the physical page
@@ -124,17 +126,12 @@ class BasePage:
 
 		schema = 0
 		for idx in range(self.num_user_columns):
-			# creating a schema with bitwise operators of what is updated
-			# note this is not a great way of creating a schema as it
-			# limits the amount of columns
-			# might want to refactor a way later.
-			# rn since we have 64 bits can have 63 columns i believe but I def
-			# want to change this logic later on but it works rn
 			if record.columns[idx] is not None:
-				schema = ( schema | (1 << self.num_user_columns-(idx+1)))
+				schema = (schema | (1 << self.num_user_columns-(idx+1)))
 				self.phys_pages[idx + 4].write(record.columns[idx])
 			else:
 				self.phys_pages[idx + 4].write(0)
+
 		self.phys_pages[3].write(schema)
 		self.num_records += 1
 		return schema

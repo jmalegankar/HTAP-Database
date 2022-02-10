@@ -117,7 +117,8 @@ class PageRange:
             return None
 
         if indirection != 0:
-            updated_record = self.get_withRID(indirection, Q_col, True)
+            tail_page_number, tail_offset = get_page_number_and_offset(indirection)
+            updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
 
             for index in range(self.num_of_columns):
                 if (base_schema & (1 << (self.num_of_columns - index - 1)) and

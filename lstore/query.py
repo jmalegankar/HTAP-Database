@@ -90,7 +90,7 @@ class Query:
                     Record(
                         rid,
                         self.table.key,
-                        self.table.page_ranges[page_range_number].get_withRID(rid,query_columns)
+                        self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
                     )
                 )
 
