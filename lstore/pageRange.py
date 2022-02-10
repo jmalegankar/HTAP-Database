@@ -106,17 +106,18 @@ class PageRange:
                 return self.arr_of_tail_pages[page_number].get_user_cols(offset)
             return self.arr_of_tail_pages[page_number].get_cols(offset, Q_col)
         else:
-            return self.traverse_ind(self.arr_of_base_pages[page_number].get_cols(offset, Q_col),
-                                    Q_col,
-                                    self.arr_of_base_pages[page_number].get(offset, 0),
-                                    self.arr_of_base_pages[page_number].get(offset, 3)
-                                    )
+            indirection = self.arr_of_base_pages[page_number].get(offset, 0)
 
-    def traverse_ind(self, base_record, Q_col, indirection, base_schema):
-        if indirection == 200000000: # we set indirection to 200000000 when we deleted the record
-            return None
+            if indirection == 200000000:
+                # we set indirection to 200000000 when we deleted the record
+                return None
 
-        if indirection != 0:
+            base_record = self.arr_of_base_pages[page_number].get_cols(offset, Q_col)
+
+            if indirection == 0:
+                return base_record
+
+            base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
             updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
 
@@ -124,8 +125,7 @@ class PageRange:
                 if (base_schema & (1 << (self.num_of_columns - index - 1)) and
                     (Q_col is None or Q_col[index] == 1)):
                     base_record[index] = updated_record[index]
-
-        return base_record
+            return base_record
 
     def check_schema(self, schema):
         return list(bytes(schema)) == (2 ** self.num_of_columns)-1
@@ -196,9 +196,9 @@ class PageRange:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].update(base_rid, record)
         else:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
-                self.get_tail_withRID(previous_tail_rid
-                ), record)
+                self.get_tail_withRID(previous_tail_rid), record)
 
         # set base record indirection to new tail page rid
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
+        

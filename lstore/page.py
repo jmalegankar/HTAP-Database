@@ -27,12 +27,12 @@ class Page:
         self.num_records += 1
 
     def get(self, rec_num):
-        return int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], "big", signed=True)
+        return int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], 'big', signed=True)
 
     def set(self, rec_num, value):
         self.data[rec_num * 8 : rec_num * 8 + 8] = value.to_bytes(8, 'big', signed=True)
 
     def get_and_set(self, rec_num, value):
-        old = int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], "big", signed=True)
+        old = int.from_bytes(self.data[rec_num * 8 : rec_num * 8 + 8], 'big', signed=True)
         self.data[rec_num * 8 : rec_num * 8 + 8] = value.to_bytes(8, 'big', signed=True)
         return old
