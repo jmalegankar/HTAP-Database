@@ -40,6 +40,7 @@ class Table:
         return self.__str__()
 
     def create_a_new_page_range(self):
+        assert self.page_range_number < 99
         self.page_range_number += 1
         self.page_ranges.append(PageRange(self.num_columns, self.page_range_number))
 

@@ -1,50 +1,33 @@
 from lstore.db import Database
 from lstore.table import Table
 from lstore.query import Query
-import os
 table = Database().create_table('Test', 3, 0)
 query = Query(table)
 
-query.insert(1, 2, 3)
+# insert 100k items
+for i in range(100000):
+	_ = query.insert(i, i+1, i+2)
 
-table # show first record
-x=os.system('clear')
+# find all records where the first column is 10000
+query.select(10000, 0, [1,1,1])
 
-query.insert(4, 5, 6)
+# find all records where the second column is 10000
+# fast thanks to index all columns
+query.select(10000, 1, [1,1,1])
 
-table # show second record
-x=os.system('clear')
+# find all records where the third column is 10000
+# fast thanks to index all columns
+query.select(10000, 2, [1,1,1])
 
-query.update(1, 4, 5, 6)  # show False because 4 already exists
+# change the second column to -1
+query.update(0, None, -1, None)
 
-query.update(1, 7, 8, 9)
+# select record where the primary key is 0
+query.select(0, 0, [1,1,1])
 
-table # show schema is 111, show new tail page, show indirection
-x=os.system('clear')
+# update 100k time
+for i in range(100000):
+	_ = query.update(0, None, None, i)
 
-query.update(4, None, None, -1)
-
-table # show second record has new tail record, schema is 001
-x=os.system('clear')
-
-query.select(-1, 2, [1, 1, 1]) # find all record where the third col is -1
-
-query.insert(-1, -2, -1)
-
-table # show third record
-x=os.system('clear')
-
-query.select(-1, 2, [1, 1, 1]) # two records
-
-query.delete(-1) # Delete last record
-
-query.delete(-2) # Delete a invalid record -> False
-
-table # show the third records has indir 200000000
-x=os.system('clear')
-
-query.sum(-100, 100, 2) # 8
-
-query.sum(-100, 100, 1) # 13 
-
-query.increment(7, 1)
+# fast thanks to cumulative tail record
+query.select(0, 0, [1,1,1])

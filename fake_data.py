@@ -380,6 +380,14 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(query.select(4, 0, [1,1,1])[0].columns, [4,1,1])
 		self.assertEqual(query.select(7, 0, [1,1,1])[0].columns, [7,2,3])
 
+	def test_1M(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		for i in range(409601):
+			query.insert(i, i, i)
+
 if __name__ == '__main__':
 	unittest.main()
 	

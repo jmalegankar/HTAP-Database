@@ -55,18 +55,21 @@ class Query:
         if len(columns) != self.table.num_columns:
             return False
 
-        if len(self.table.index.locate(self.table.key, columns[self.table.key])) > 0:
-            # Primary key must be unique
+        try:
+            if len(self.table.index.locate(self.table.key, columns[self.table.key])) > 0:
+                # Primary key must be unique
+                return False
+            
+            page_range_number = self.table.get_next_page_range_number()
+            rid = self.table.page_ranges[page_range_number].write(*columns)
+            
+            # Set indices for each column
+            for col, value in enumerate(columns):
+                self.table.index.set(col, value, rid)
+                
+            return True
+        except:
             return False
-
-        page_range_number = self.table.get_next_page_range_number()
-        rid = self.table.page_ranges[page_range_number].write(*columns)
-
-        # Set indices for each column
-        for col, value in enumerate(columns):
-            self.table.index.set(col, value, rid)
-
-        return True
 
     """
     # Read a record with specified key
@@ -171,3 +174,4 @@ class Query:
             updated = self.update(key, *updated_columns)
             return updated
         return False
+    
