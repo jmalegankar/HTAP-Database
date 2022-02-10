@@ -1,6 +1,6 @@
+import time
 from lstore.page import Page
 from lstore.record import Record
-import time
 
 class BasePage:
 
@@ -18,7 +18,7 @@ class BasePage:
 		The rest are the columns provided by the user
 		"""
 		self.phys_pages = [Page() for i in range(self.num_columns)]
-	
+
 	"""
 	Debug Only
 	"""
@@ -52,7 +52,7 @@ class BasePage:
 	Get next record number
 	For page range to generate RID
 	"""
-	
+
 	def get_next_rec_num(self):
 		return self.num_records
 
@@ -64,10 +64,13 @@ class BasePage:
 	def get(self, rec_num, column):
 		return self.phys_pages[column].get(rec_num)
 
-		# quicker setter to access page set
+	"""
+	quicker setter to access page set
+	"""
+
 	def set(self, rec_num, value, column):
 		return self.phys_pages[column].set(rec_num, value)
-	
+
 	def get_and_set(self, rec_num, value, column):
 		return self.phys_pages[column].get_and_set(rec_num, value)
 
@@ -78,16 +81,13 @@ class BasePage:
 	"""
 
 	def get_cols(self, rec_num, columns):
-		assert 0 <= rec_num < self.num_records and len(columns) == self.num_user_columns
-		return [None if columns[i] == 0 else self.get(rec_num, 4 + i) for i in range(len(columns))]
-	
-	
+		return [None if v == 0 else self.phys_pages[4 + i].get(rec_num) for i, v in enumerate(columns)]
+
 	def get_user_cols(self, rec_num):
-		return [self.get(rec_num, 4 + i) for i in range(self.num_user_columns)]
-	
-	
+		return [self.phys_pages[4 + i].get(rec_num) for i in range(self.num_user_columns)]
+
 	def get_all_cols(self, rec_num):
-		return [self.get(rec_num, i) for i in range(self.num_columns)]
+		return [self.phys_pages[i].get(rec_num) for i in range(self.num_columns)]
 
 	"""
 	Write a record to the physical page
@@ -102,7 +102,7 @@ class BasePage:
 		Create new base page record
 		Need to update page directory and map primary key -> RID
 		"""
-		
+
 		# Internal columns
 		self.phys_pages[0].write(0) # indirection, default = ?
 		self.phys_pages[1].write(record.rid) # rid, given by the PageRange
@@ -119,36 +119,30 @@ class BasePage:
 	# used to update meaning making a new tail record
 	def update(self, base_rid, record: Record):
 		assert len(record.columns) == self.num_user_columns
-		
+
 		self.phys_pages[0].write(base_rid)
 		self.phys_pages[1].write(record.rid)
 		self.phys_pages[2].write(int(time.time()))
 
 		schema = 0
 		for idx in range(self.num_user_columns):
-			# creating a schema with bitwise operators of what is updated
-			# note this is not a great way of creating a schema as it 
-			# limits the amount of columns
-			# might want to refactor a way later.
-			# rn since we have 64 bits can have 63 columns i believe but I def
-			# want to change this logic later on but it works rn
-			if record.columns[idx] != None:
-				schema = ( schema | (1 << self.num_user_columns-(idx+1)))
+			if record.columns[idx] is not None:
+				schema = (schema | (1 << self.num_user_columns-(idx+1)))
 				self.phys_pages[idx + 4].write(record.columns[idx])
 			else:
 				self.phys_pages[idx + 4].write(0)
+
 		self.phys_pages[3].write(schema)
 		self.num_records += 1
 		return schema
 
-	
 	def tail_update(self, previous_data, record: Record):
 		assert len(record.columns) == self.num_user_columns
-		
+
 		self.phys_pages[0].write(previous_data[1]) # indirection is previous tail RID
 		self.phys_pages[1].write(record.rid)
 		self.phys_pages[2].write(int(time.time()))
-		
+
 		schema = previous_data[3]
 		for index in range(self.num_user_columns):
 			if record.columns[index] is not None:

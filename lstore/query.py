@@ -1,14 +1,12 @@
-from lstore.table import Table
 from lstore.record import Record
-from lstore.index import Index
 from lstore.parser import *
 
-
 class Query:
-    
-    __slots__ = 'table'
+
+    __slots__ = ('table',)
+
     """
-    # Creates a Query object that can perform different queries on the specified table 
+    # Creates a Query object that can perform different queries on the specified table
     Queries that fail must return False
     Queries that succeed should return the result or True
     Any query that crashes (due to exceptions) should return False
@@ -16,7 +14,6 @@ class Query:
 
     def __init__(self, table):
         self.table = table
-        pass
 
     """
     # internal Method
@@ -33,13 +30,17 @@ class Query:
 
         try:
             page_range_number = get_page_range_number(rid)
-            
-            data = self.table.page_ranges[page_range_number].get_withRID(rid, [1] * self.table.num_columns)
+
+            data = self.table.page_ranges[page_range_number].get_withRID(
+                rid,
+                [1] * self.table.num_columns
+            )
+
             self.table.page_ranges[page_range_number].delete_withRID(rid)
-            
+
             for col, value in enumerate(data):
                 self.table.index.remove(col, value, rid)
-        except Exception as e:
+        except:
             return False
         else:
             return True
@@ -53,14 +54,14 @@ class Query:
     def insert(self, *columns):
         if len(columns) != self.table.num_columns:
             return False
-        
+
         if len(self.table.index.locate(self.table.key, columns[self.table.key])) > 0:
             # Primary key must be unique
             return False
-    
+
         page_range_number = self.table.get_next_page_range_number()
         rid = self.table.page_ranges[page_range_number].write(*columns)
-        
+
         # Set indices for each column
         for col, value in enumerate(columns):
             self.table.index.set(col, value, rid)
@@ -80,11 +81,19 @@ class Query:
     def select(self, index_value, index_column, query_columns):
         try:
             rids = self.table.index.locate(index_column, index_value)
-            
+
             results = []
             for rid in rids:
                 page_range_number = get_page_range_number(rid)
-                results.append(Record(rid, self.table.key, self.table.page_ranges[page_range_number].get_withRID(rid,query_columns)))
+
+                results.append(
+                    Record(
+                        rid,
+                        self.table.key,
+                        self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
+                    )
+                )
+
             return results
         except:
             return False
@@ -100,25 +109,21 @@ class Query:
         if len(rid) != 1:
             return False
         rid = rid[0]
-        
+
         try:
-            if columns[self.table.key] != None:
+            if columns[self.table.key] is not None:
                 new_rid = self.table.index.locate(self.table.key, columns[self.table.key])
                 if len(new_rid) != 0:
                     return False
-            
+
             page_range_number = get_page_range_number(rid)
-            query_columns = []
-            
-            for column in columns:
-                if column == None:
-                    query_columns.append(0)
-                else:
-                    query_columns.append(1)
-                    
-            data = self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
+
+            data = self.table.page_ranges[page_range_number].get_withRID(
+                rid, [0 if column is None else 1 for column in columns]
+            )
+
             self.table.page_ranges[page_range_number].update(rid, *columns)
-            
+
             for col, value in enumerate(columns):
                 if value is not None:
                     self.table.index.replace(col, data[col], value, rid)
@@ -126,7 +131,6 @@ class Query:
             return False
         else:
             return True
-        
 
     """
     :param start_range: int         # Start of the key range to aggregate 
@@ -141,13 +145,13 @@ class Query:
         try:
             rids = self.table.index.locate_range(start_range, end_range, self.table.key)
             total = 0
-            
+
             query_columns = [0] * self.table.num_columns
             query_columns[aggregate_column_index] = 1
             for rid in rids:
                 total += self.select(rid, self.table.key, query_columns)[0][aggregate_column_index]
             return total
-        except Exception as e:
+        except:
             return False
 
     """
@@ -160,11 +164,10 @@ class Query:
     """
 
     def increment(self, key, column):
-        r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
-        if r is not False:
+        result = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
+        if result is not False:
             updated_columns = [None] * self.table.num_columns
-            updated_columns[column] = r[column] + 1
-            u = self.update(key, *updated_columns)
-            return u
+            updated_columns[column] = result[column] + 1
+            updated = self.update(key, *updated_columns)
+            return updated
         return False
-    

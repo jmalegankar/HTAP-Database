@@ -4,7 +4,8 @@ from lstore.parser import *
 
 class PageRange:
 
-    __slots__ = 'num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages', 'range_number', 'base_page_number', 'tail_page_number', 'num_records'
+    __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
+        'range_number', 'base_page_number', 'tail_page_number', 'num_records')
 
     def __init__(self, columns, range_number):
         self.num_of_columns = columns
@@ -20,7 +21,11 @@ class PageRange:
     """
 
     def __str__(self):
-        string = 'Number: {}, Base: {}/8, tail: {}\n'.format(self.range_number, self.base_page_number + 1, self.tail_page_number + 1)
+        string = 'Number: {}, Base: {}/8, tail: {}\n'.format(
+            self.range_number,
+            self.base_page_number + 1,
+            self.tail_page_number + 1
+        )
         string += '=' * 25 + '\n'
         string += 'BasePages:\n'
         if self.base_page_number > -1:
@@ -45,7 +50,7 @@ class PageRange:
 
     def pageRange_has_capacity(self):
         return len(self.arr_of_base_pages) < 8
-    
+
     def is_page_full(self, page_number, isTail=False):
         if page_number == -1:
             """ We don't have any page yet """
@@ -55,7 +60,7 @@ class PageRange:
             return not self.arr_of_tail_pages[page_number].has_capacity()
         else:
             return not self.arr_of_base_pages[page_number].has_capacity()
-          
+
     """
     creates a base page or tail page
     """
@@ -79,9 +84,15 @@ class PageRange:
         # Data OK, create new RID for this record
         if self.is_page_full(self.base_page_number):
             self.create_a_new_page()
-    
-        rid = create_rid(0, self.range_number, self.base_page_number, self.arr_of_base_pages[self.base_page_number].get_next_rec_num())
-        record = Record(rid, -1, list(columns))
+
+        rid = create_rid(
+            0,
+            self.range_number,
+            self.base_page_number,
+            self.arr_of_base_pages[self.base_page_number].get_next_rec_num()
+        )
+
+        record = Record(rid, -1, columns)
         self.arr_of_base_pages[self.base_page_number].write(record)
         self.num_records += 1
         return rid
@@ -89,37 +100,33 @@ class PageRange:
     """
     Get a record given page_number and offset
     """
-    
+
     def get(self, page_number, offset, Q_col=None, isTail=False):
         if isTail:
-            if Q_col == None:
+            if Q_col is None:
                 return self.arr_of_tail_pages[page_number].get_user_cols(offset)
-            else:
-                return self.arr_of_tail_pages[page_number].get_cols(offset, Q_col)
+            return self.arr_of_tail_pages[page_number].get_cols(offset, Q_col)
         else:
-            return self.traverse_ind(self.arr_of_base_pages[page_number].get_cols(offset, Q_col),
-                                    Q_col,
-                                    self.arr_of_base_pages[page_number].get(offset, 0),
-                                    self.arr_of_base_pages[page_number].get(offset, 3)
-                                    )
-            
-            
-    def traverse_ind(self, base_record, Q_col, indirection, base_schema):
-        if indirection == 200000000: # we set indirection to 200000000 when we deleted the record
-            return None
-    
-        if indirection != 0:
-            updated_record = self.get_withRID(indirection, Q_col, True)
+            indirection = self.arr_of_base_pages[page_number].get(offset, 0)
+
+            if indirection == 200000000:
+                # we set indirection to 200000000 when we deleted the record
+                return None
+
+            base_record = self.arr_of_base_pages[page_number].get_cols(offset, Q_col)
+
+            if indirection == 0:
+                return base_record
+
+            base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
+            tail_page_number, tail_offset = get_page_number_and_offset(indirection)
+            updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
 
             for index in range(self.num_of_columns):
-                if base_schema & (1 << (self.num_of_columns - index - 1)) and (Q_col == None or Q_col[index] == 1):
+                if (base_schema & (1 << (self.num_of_columns - index - 1)) and
+                    (Q_col is None or Q_col[index] == 1)):
                     base_record[index] = updated_record[index]
-
-        return base_record
-
-    
-    def check_schema(self, schema):
-        return list(bytes(schema)) == (2 ** self.num_of_columns)-1
+            return base_record
 
     """
     Get a record given RID
@@ -138,15 +145,17 @@ class PageRange:
     def get_tail_withRID(self, rid):
         page_number, offset = get_page_number_and_offset(rid)
         return self.arr_of_tail_pages[page_number].get_all_cols(offset)
-    
+
     """
     Delete a record given RID
     """
 
     def delete_withRID(self, rid):
         base_page_number, base_offset = get_page_number_and_offset(rid)
-        indirection = self.arr_of_base_pages[base_page_number].get_and_set(base_offset, 200000000, 0) # set indir to 200000000
-        
+
+        # set indir to 200000000
+        indirection = self.arr_of_base_pages[base_page_number].get_and_set(base_offset, 200000000, 0)
+
         while indirection != 200000000:
             if get_page_type(indirection) == 1:
                 tail_page_number, tail_offset = get_page_number_and_offset(indirection)
@@ -167,17 +176,25 @@ class PageRange:
 
         page_number, offset = get_page_number_and_offset(base_rid)
 
-        previous_tail_rid = self.arr_of_base_pages[page_number].get(offset, 0) # indirection aka previous tail RID
-        new_tail_rid = create_rid(1, self.range_number, self.tail_page_number, self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()) # creates a tail_rid
+        # indirection aka previous tail RID
+        previous_tail_rid = self.arr_of_base_pages[page_number].get(offset, 0)
 
+        new_tail_rid = create_rid(
+            1,
+            self.range_number,
+            self.tail_page_number,
+            self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()
+        ) # creates a tail_rid
 
-        record = Record(new_tail_rid, -1, list(columns))
+        record = Record(new_tail_rid, -1, columns)
          # set the new tail record data
         new_schema = 0
         if previous_tail_rid == 0:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].update(base_rid, record)
         else:
-            new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(self.get_tail_withRID(previous_tail_rid), record)
+            new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
+                self.get_tail_withRID(previous_tail_rid), record
+            )
 
         # set base record indirection to new tail page rid
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)

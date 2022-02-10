@@ -1,12 +1,11 @@
 from lstore.table import Table
 
 class Database():
-    
-    __slots__ = 'tables'
+
+    __slots__ = ('tables',)
 
     def __init__(self):
         self.tables = {}
-        pass
 
     # Not required for milestone1
     def open(self, path):
