@@ -91,7 +91,8 @@ class PageRange:
             self.base_page_number,
             self.arr_of_base_pages[self.base_page_number].get_next_rec_num()
         )
-        record = Record(rid, -1, list(columns))
+
+        record = Record(rid, -1, columns)
         self.arr_of_base_pages[self.base_page_number].write(record)
         self.num_records += 1
         return rid
@@ -126,9 +127,6 @@ class PageRange:
                     (Q_col is None or Q_col[index] == 1)):
                     base_record[index] = updated_record[index]
             return base_record
-
-    def check_schema(self, schema):
-        return list(bytes(schema)) == (2 ** self.num_of_columns)-1
 
     """
     Get a record given RID
@@ -188,17 +186,16 @@ class PageRange:
             self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()
         ) # creates a tail_rid
 
-
-        record = Record(new_tail_rid, -1, list(columns))
+        record = Record(new_tail_rid, -1, columns)
          # set the new tail record data
         new_schema = 0
         if previous_tail_rid == 0:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].update(base_rid, record)
         else:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
-                self.get_tail_withRID(previous_tail_rid), record)
+                self.get_tail_withRID(previous_tail_rid), record
+            )
 
         # set base record indirection to new tail page rid
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
-        

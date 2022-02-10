@@ -117,15 +117,11 @@ class Query:
                     return False
 
             page_range_number = get_page_range_number(rid)
-            query_columns = []
 
-            for column in columns:
-                if column is None:
-                    query_columns.append(0)
-                else:
-                    query_columns.append(1)
+            data = self.table.page_ranges[page_range_number].get_withRID(
+                rid, [0 if column is None else 1 for column in columns]
+            )
 
-            data = self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
             self.table.page_ranges[page_range_number].update(rid, *columns)
 
             for col, value in enumerate(columns):
