@@ -30,16 +30,8 @@ class Query:
 
         try:
             page_range_number = get_page_range_number(rid)
-
-            data = self.table.page_ranges[page_range_number].get_withRID(
-                rid,
-                [1] * self.table.num_columns
-            )
-
             self.table.page_ranges[page_range_number].delete_withRID(rid)
-
-            for col, value in enumerate(data):
-                self.table.index.remove(col, value, rid)
+            self.table.index.remove(0, primary_key, rid)
         except:
             return False
         else:
@@ -88,15 +80,17 @@ class Query:
             results = []
             for rid in rids:
                 page_range_number = get_page_range_number(rid)
-
-                results.append(
-                    Record(
-                        rid,
-                        self.table.key,
-                        self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
+                check=self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
+                if check==None:
+                    continue
+                else:
+                    results.append(
+                        Record(
+                            rid,
+                            self.table.key,
+                            check
+                        )
                     )
-                )
-
             return results
         except:
             return False

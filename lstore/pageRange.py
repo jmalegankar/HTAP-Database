@@ -152,7 +152,7 @@ class PageRange:
 
     def delete_withRID(self, rid):
         base_page_number, base_offset = get_page_number_and_offset(rid)
-
+        assert self.arr_of_base_pages[base_page_number].get(base_offset,0) != 200000000
         # set indir to 200000000
         indirection = self.arr_of_base_pages[base_page_number].get_and_set(base_offset, 200000000, 0)
 
