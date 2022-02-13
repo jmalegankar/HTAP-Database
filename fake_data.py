@@ -11,7 +11,7 @@ import time
 import random
 
 class TestPages(unittest.TestCase):
-
+	
 	def test_one_basepage(self):
 		start = time.time()
 		basepage = BasePage(2) # create two columns
@@ -19,7 +19,7 @@ class TestPages(unittest.TestCase):
 		# Test First Record
 		self.assertEqual(basepage.get_next_rec_num(), 0)
 		basepage.write(Record(0, 0, [123, 321])) # set first column to 123 and second to 321
-		self.assertTrue(abs(basepage.get(0, 2) - int(start)) <= 1) # check internal column (timestamp)
+		self.assertTrue(abs(basepage.get(0, 2) - int(start)) <= 2) # check internal column (timestamp)
 		self.assertEqual(basepage.get(0, 4), 123)
 		self.assertEqual(basepage.get(0, 5), 321)
 		
@@ -178,7 +178,7 @@ class TestPages(unittest.TestCase):
 			self.assertEqual(len(results), 1)
 			self.assertEqual(results[0].columns, [i, i+1, i+2, i+3, i+4])
 		
-		for i in range(10000):
+		for i in range(50, 100):
 			results = query.select(i+2, 2, [1] * 5)
 			self.assertEqual(len(results), 1)
 			self.assertEqual(results[0].columns, [i, i+1, i+2, i+3, i+4])
@@ -239,6 +239,30 @@ class TestPages(unittest.TestCase):
 		self.assertTrue(query.update(1, 8, None, None))
 		self.assertEqual(query.select(8, 0, [1, 1, 1])[0].columns, [8, 10, 10])
 		self.assertEqual(query.select(1, 0, [1, 1, 1]), [])
+
+	def test_query_update_after_update(self):
+		db = Database()
+		db.create_table('Test', 3, 0)
+		table = db.get_table('Test')
+		query = Query(table)
+		
+		self.assertFalse(query.update(0, 1, 1, 1))
+		
+		self.assertTrue(query.insert(1, 2, 3))
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 2, 3])
+		self.assertTrue(query.update(1, None, None, 1))
+		self.assertEqual(query.select(1, 0, [1, 1, 1])[0].columns, [1, 2, 1])
+		self.assertEqual(query.delete(1), True)
+		self.assertFalse(query.update(1, None, None, 1))
+		self.assertTrue(query.insert(1, 2, 3))
+		self.assertTrue(query.insert(2, 2, 3))
+		self.assertTrue(query.insert(3, 2, 3))
+		self.assertTrue(query.insert(4, 2, 3))
+		self.assertEqual(query.delete(1), True)
+
+		
+		self.assertEqual(query.sum(1, 4, 1), 6)
+		self.assertEqual(query.sum(1, 4, 2), 9)
 
 	def test_query_sum(self):
 		db = Database()
@@ -379,15 +403,78 @@ class TestPages(unittest.TestCase):
 		self.assertEqual(query.select(-10, 0, [1,1,1])[0].columns, [-10,5,6])
 		self.assertEqual(query.select(4, 0, [1,1,1])[0].columns, [4,1,1])
 		self.assertEqual(query.select(7, 0, [1,1,1])[0].columns, [7,2,3])
-
-	def test_1M(self):
+	
+	def test_query_primary_key_last_column(self):
+		db = Database()
+		db.create_table('Test', 5, 4)
+		table = db.get_table('Test')
+		query = Query(table)
+		
+		for i in range(10000):
+			self.assertTrue(query.insert(i - 4, i - 3, i - 2, i - 1, i))
+			
+		correct_sum = 0
+		for i in range(5000, 6001):
+			correct_sum += i - 2
+		test_sum = 0
+		for i in range(5000, 6001):
+			test_sum += query.select(i, 4, [0, 0, 1, 0, 0])[0][2]
+		self.assertEqual(test_sum, correct_sum)
+		self.assertEqual(query.sum(5000, 6000, 2), correct_sum)
+		
+		for i in range(10000):
+			self.assertEqual(query.select(i, 4, [1,1,1,1,1])[0].columns, [i - 4, i - 3, i - 2, i - 1, i])
+		
+		for i in range(1, 10000):
+			self.assertTrue(query.update(i, None, None, None, None, i * -1))
+	
+		for i in range(1, 10000):
+			self.assertEqual(query.select(i * -1, 4, [1,1,1,1,1])[0].columns, [i - 4, i - 3, i - 2, i - 1, i * -1])
+		
+		test_sum = 0
+		for i in range(5000, 6001):
+			test_sum += query.select(i * -1, 4, [0, 0, 1, 0, 0])[0][2]
+		self.assertEqual(test_sum, correct_sum)
+		self.assertEqual(query.sum(-6000, -5000, 2), correct_sum)
+		
+		for i in range(1, 10000):
+			self.assertTrue(query.update(i * -1, 1, 2, None, 4, i))
+		
+		self.assertEqual(query.sum(1, 9999, 0), 9999)
+		
+		self.assertEqual(query.sum(0, 0, 2), -2)
+		
+		for i in range(10000):
+			self.assertTrue(query.delete(i))
+	
+		self.assertEqual(query.sum(1, 9999, 0), 0)
+		
+		for i in range(10000):
+			self.assertEqual(len(query.select(i, 4, [1,1,1,1,1])), 0)
+		
+	def test_sql_select(self):
 		db = Database()
 		db.create_table('Test', 3, 0)
 		table = db.get_table('Test')
 		query = Query(table)
-		for i in range(409601):
-			query.insert(i, i, i)
+
+		self.assertTrue(query.sql('INSERT VALUES (-1,2,3)'))
+		self.assertEqual(len(query.sql('SELECT * WHERE 0=-1')), 1)
+
+		self.assertTrue(query.sql('UPDATE 1 = -1, 2 = -1 WHERE -1'))
+		self.assertEqual(query.sql('SELECT * WHERE 0=-1')[0].columns, [-1, -1, -1])
+
+		self.assertTrue(query.sql('UPDATE 1 = 100 WHERE -1'))
+		self.assertEqual(query.sql('SELECT * WHERE 0=-1')[0].columns, [-1, 100, -1])
+		
+		self.assertTrue(query.sql('UPDATE 0 = 1 WHERE -1'))
+		self.assertEqual(len(query.sql('SELECT * WHERE 0=-1')), 0)
+		self.assertEqual(len(query.sql('SELECT * WHERE 0=1')), 1)
+		self.assertEqual(query.sql('SELECT * WHERE 0 = 1')[0].columns, [1, 100, -1])
+		
+		self.assertTrue(query.sql('DELETE 1'))
+		self.assertEqual(len(query.sql('SELECT * WHERE 0=1')), 0)
 
 if __name__ == '__main__':
-	unittest.main()
+	unittest.main(verbosity=2)
 	

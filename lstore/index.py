@@ -8,26 +8,36 @@ from collections import defaultdict
 
 class Index:
 
-    __slots__ = ('indices',)
+    __slots__ = 'indices', 'indexed_columns', 'key'
 
     def __init__(self, table):
-        # One index for each table. All our empty initially.
         self.indices = [None] *  table.num_columns
+        self.indexed_columns = [0] * table.num_columns
+        self.key = table.key
 
     """
     Set index given column #, value (key of the dict/tree), and rid (the value)
     """
 
     def set(self, column, value, rid):
-        self.indices[column][value].add(rid)
+        if column == self.key:
+            # TODO: Use B tree
+            self.indices[column][value] = rid
+        else:
+            # Use dict
+            self.indices[column][value].add(rid)
 
     """
     # returns the location of all records with the given value on column "column"
     """
 
     def locate(self, column, value):
-        # TODO: Change it to B tree search given value
-        return list(self.indices[column][value])
+        if column == self.key:
+            # TODO: Use B tree
+            return self.indices[column].get(value, None)
+        else:
+            # Use dict
+            return list(self.indices[column][value])
 
     """
     Remove index given column #, value (key of the dict/tree), rid is None will remove all, or just one
@@ -35,10 +45,15 @@ class Index:
 
     def remove(self, column, value, rid = None):
         try:
-            if rid is None:
-                self.indices[column][value] = []
+            if column == self.key:
+                # TODO: Use B tree
+                del self.indices[column][value]
             else:
-                self.indices[column][value].remove(rid)
+                # Use dict
+                if rid is None:
+                    self.indices[column][value] = set()
+                else:
+                    self.indices[column][value].remove(rid)
         except KeyError:
             pass
 
@@ -53,25 +68,28 @@ class Index:
 
     def locate_range(self, begin, end, column):
         # TODO: Use B tree range given begin/end
-        return filter(lambda x: begin <= x <= end and
-                len(self.indices[column][x]) > 0, self.indices[column])
-
-    """
-    Create index for all columns
-    """
-
-    def create_all_index(self):
-        for i in range(len(self.indices)):
-            self.create_index(i)
-        return True
+        rids = []
+        for key, rid in self.indices[self.key].items():
+            if begin <= key <= end:
+                rids.append(rid)
+        return rids
 
     """
     # optional: Create index on specific column
     """
 
     def create_index(self, column_number):
-        # TODO: Change defaultdict to B tree
-        self.indices[column_number] = defaultdict(set)
+        if self.indexed_columns[column_number] == 1:
+            return False
+
+        if column_number == self.key:
+            # TODO: Use B tree
+            self.indices[column_number] = dict()
+        else:
+            # Use dict
+            self.indices[column_number] = defaultdict(set)
+
+        self.indexed_columns[column_number] = 1
         return True
 
     """
@@ -79,6 +97,10 @@ class Index:
     """
 
     def drop_index(self, column_number):
+        if self.indexed_columns[column_number] == 0:
+            return False
+
         self.indices[column_number] = None
+        self.indexed_columns[column_number] = 0
         return True
     

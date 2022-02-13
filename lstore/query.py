@@ -1,5 +1,6 @@
 from lstore.record import Record
 from lstore.parser import *
+import re
 
 class Query:
 
@@ -23,23 +24,23 @@ class Query:
     """
 
     def delete(self, primary_key):
-        rid = self.table.index.locate(self.table.key, primary_key)
-        if len(rid) != 1:
-            return False
-        rid = rid[0]
-
         try:
+            rid = self.table.index.locate(self.table.key, primary_key)
+            if rid is None:
+                return False
+
             page_range_number = get_page_range_number(rid)
 
             data = self.table.page_ranges[page_range_number].get_withRID(
                 rid,
-                [1] * self.table.num_columns
+                self.table.index.indexed_columns
             )
 
             self.table.page_ranges[page_range_number].delete_withRID(rid)
 
             for col, value in enumerate(data):
-                self.table.index.remove(col, value, rid)
+                if value is not None:
+                    self.table.index.remove(col, value, rid)
         except:
             return False
         else:
@@ -56,7 +57,8 @@ class Query:
             return False
 
         try:
-            if len(self.table.index.locate(self.table.key, columns[self.table.key])) > 0:
+            rid = self.table.index.locate(self.table.key, columns[self.table.key])
+            if rid is not None:
                 # Primary key must be unique
                 return False
             
@@ -64,8 +66,9 @@ class Query:
             rid = self.table.page_ranges[page_range_number].write(*columns)
             
             # Set indices for each column
-            for col, value in enumerate(columns):
-                self.table.index.set(col, value, rid)
+            for column_index in range(self.table.num_columns):
+                if self.table.index.indexed_columns[column_index] == 1:
+                    self.table.index.set(column_index, columns[column_index], rid)
                 
             return True
         except:
@@ -83,20 +86,43 @@ class Query:
 
     def select(self, index_value, index_column, query_columns):
         try:
-            rids = self.table.index.locate(index_column, index_value)
-
             results = []
-            for rid in rids:
-                page_range_number = get_page_range_number(rid)
+            if self.table.index.indexed_columns[index_column] == 1:
+                if index_column == self.table.key:
+                    rid = self.table.index.locate(index_column, index_value)
+                    if rid is None:
+                        return []
+                    else:
+                        rids = [rid]
+                else:
+                    rids = self.table.index.locate(index_column, index_value)
 
-                results.append(
-                    Record(
-                        rid,
-                        self.table.key,
-                        self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
+                for rid in rids:
+                    page_range_number = get_page_range_number(rid)
+                    
+                    results.append(
+                        Record(
+                            rid,
+                            self.table.key,
+                            self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)
+                        )
                     )
-                )
-
+            else:
+                temp_query_columns = query_columns
+                temp_query_columns[index_column] = 1
+                
+                key_index = self.table.index.indices[self.table.key]
+                for primary_key in key_index:
+                    rid = key_index[primary_key]
+                    
+                    page_range_number = get_page_range_number(rid)
+                    
+                    data = self.table.page_ranges[page_range_number].get_withRID(
+                        rid, temp_query_columns
+                    )
+                    
+                    if data[index_column] == index_value:
+                        results.append(Record(rid, self.table.key, data))
             return results
         except:
             return False
@@ -108,15 +134,13 @@ class Query:
     """
 
     def update(self, primary_key, *columns):
-        rid = self.table.index.locate(self.table.key, primary_key)
-        if len(rid) != 1:
-            return False
-        rid = rid[0]
-
         try:
+            rid = self.table.index.locate(self.table.key, primary_key)
+            if rid is None:
+                return False
+            
             if columns[self.table.key] is not None:
-                new_rid = self.table.index.locate(self.table.key, columns[self.table.key])
-                if len(new_rid) != 0:
+                if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
                     return False
 
             page_range_number = get_page_range_number(rid)
@@ -128,9 +152,9 @@ class Query:
             self.table.page_ranges[page_range_number].update(rid, *columns)
 
             for col, value in enumerate(columns):
-                if value is not None:
+                if value is not None and self.table.index.indexed_columns[col] == 1:
                     self.table.index.replace(col, data[col], value, rid)
-        except:
+        except KeyError:
             return False
         else:
             return True
@@ -152,7 +176,8 @@ class Query:
             query_columns = [0] * self.table.num_columns
             query_columns[aggregate_column_index] = 1
             for rid in rids:
-                total += self.select(rid, self.table.key, query_columns)[0][aggregate_column_index]
+                page_range_number = get_page_range_number(rid)
+                total += self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)[aggregate_column_index]
             return total
         except:
             return False
@@ -175,3 +200,68 @@ class Query:
             return updated
         return False
     
+    """
+    Simple SQL for debug
+
+    Query.select(index_value, index_column, query_columns) ->
+        SELECT query_columns WHERE index_column = index_value
+    Ex:
+        'SELECT * WHERE 0 = 100'    (select all columns, records where the first column is 100)
+        'SELECT 0, 2 WHERE 1 = 50'  (select columns 0 & 2, records where the second column is 50)
+
+    Query.update(primary_key, *columns) ->
+        UPDATE column index = new value WHERE primary_key
+    Ex:
+        'UPDATE 1 = 10, 2 = 20 WHERE 1' (find primary key is 1, set second column 10 and third 20)
+
+    Query.insert(*columns) ->
+        INSERT VALUES (columns)
+    Ex:
+        'INSERT VALUES (1, 2, 3)    (insert record with columns = [1, 2, 3]
+
+    Query.delete(primary_key) ->
+        DELETE primary_key
+    Ex:
+        'DELETE 1'  (delete record with primary key = 1
+    """
+
+    def sql(self, command):
+        try:
+            command = command.lower()
+            if command[:6] == 'select':
+                selection, _, condition = command[7:].partition(' where ')
+                if selection[0] == '*':
+                    select_columns = [1] * self.table.num_columns
+                else:
+                    select_columns = [0] * self.table.num_columns
+                    for selected_column in re.split('\s*,\s*', selection):
+                        select_columns[int(selected_column)] = 1
+
+                condition_result = re.match('(\d)\s*=\s*(-?\d)', condition)
+
+                if condition_result == None:
+                    return False
+                else:
+                    return self.select(int(condition_result.group(2)), int(condition_result.group(1)), select_columns)
+            elif command[:6] == 'update':
+                update_data = re.findall('(\d+)\s*=\s*(-?\d+)', command[7:])
+                primary_key = re.search('where\s*(-?\d+)', command[7:]).group(1)
+                
+                update_columns = [None] * self.table.num_columns
+                for data in update_data:
+                    update_columns[int(data[0])] = int(data[1])
+
+                return self.update(int(primary_key), *update_columns)
+            elif command[:6] == 'insert':
+                values = re.match('.*\((.+)\)', command[7:]).group(1)
+                columns = [int(value) for value in re.split('\s*,\s*', values)]
+                return self.insert(*columns)
+            elif command[:6] == 'delete':
+                primary_key = re.match('\s*(-?\d+)\s*', command[7:]).group(1)
+                return self.delete(int(primary_key))
+            else:
+                return False
+        except:
+
+            return False
+        

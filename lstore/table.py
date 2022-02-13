@@ -21,7 +21,7 @@ class Table:
         self.page_ranges = []
         self.page_range_number = -1
         self.index = Index(self)
-        self.index.create_all_index()
+        self.index.create_index(key)
 
     def __str__(self):
         string = 'num_columns: {}, page_range_number: {}\n'.format(
