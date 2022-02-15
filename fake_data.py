@@ -45,9 +45,16 @@ class TestDatabase(unittest.TestCase):
 			shutil.rmtree('./database')
 		except:
 			pass
-	
+
 	def test_query_insert_select(self):
+		try:
+			shutil.rmtree('./query_insert_select')
+		except:
+			pass
+
 		db = Database()
+		db.open('./query_insert_select')
+
 		grades_table = db.create_table('Grades', 5, 0)
 		query = Query(grades_table)
 		
@@ -73,6 +80,47 @@ class TestDatabase(unittest.TestCase):
 		
 		db.close()
 
+	def test_query_insert_select_restarted(self):
+		db = Database()
+		db.open('./query_insert_select')
+
+		grades_table = db.get_table('Grades')
+		query = Query(grades_table)
+		
+		for i in range(5000):
+			results = query.select(i, 0, [1] * 5)
+			self.assertEqual(len(results), 1)
+			if i == 50:
+				self.assertEqual(results[0].columns, [50, 51, 52, 53, 1234567890])
+			else:
+				self.assertEqual(results[0].columns, [i, i+1, i+2, i+3, i+4])
+		self.assertEqual(query.select(50, 0, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
+		self.assertEqual(query.select(51, 1, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
+		self.assertEqual(query.select(52, 2, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
+		self.assertEqual(query.select(53, 3, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
+		self.assertEqual(query.select(1234567890, 4, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
+
+		print(query.select(0, 0, [1]*5))
+		self.assertTrue(query.insert(-1, -1, -1, -1, -1))
+		self.assertTrue(query.update(0, None, None, -1, -1, -1))
+		self.assertTrue(query.update(1, None, None, -1, -1, -1))
+		print(query.select(0, 0, [1]*5))
+		db.close()
+		
+		new_db = Database()
+		new_db.open('./query_insert_select')
+		new_grades_table = new_db.get_table('Grades')
+		new_query = Query(new_grades_table)
+		
+		new_result = new_query.select(0, 0, [1] * 5)
+		self.assertEqual(len(new_result), 1)
+		self.assertEqual(new_result[0].columns, [0, 1, -1, -1, -1])
+		
+		new_result = new_query.select(-1, 0, [1] * 5)
+		self.assertEqual(len(new_result), 1)
+		self.assertEqual(new_result[0].columns, [-1, -1, -1, -1, -1])
+		
+		new_db.close()
 
 	def test_baby_query_insert(self):
 		db = Database()

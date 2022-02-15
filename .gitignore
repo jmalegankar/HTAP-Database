@@ -4,3 +4,4 @@
 *.pyc
 *.metadata
 *.db
+*.index

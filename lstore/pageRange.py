@@ -9,7 +9,7 @@ class PageRange:
     __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
         'range_number', 'base_page_number', 'tail_page_number', 'page_range_path', 'num_records')
 
-    def __init__(self, table_name, columns, range_number):
+    def __init__(self, table_name, columns, range_number, open_from_db=False):
         self.num_of_columns = columns
         self.arr_of_base_pages=[]
         self.arr_of_tail_pages=[]
@@ -21,6 +21,9 @@ class PageRange:
 
         bufferpool.shared.create_folder(self.page_range_path + '_b')
         bufferpool.shared.create_folder(self.page_range_path + '_t')
+
+        if open_from_db:
+            self.open()
 
     """
     Debug Only
@@ -211,17 +214,27 @@ class PageRange:
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
 
     def open(self):
+#       print('Opening new page range')
         data = bufferpool.shared.read_metadata(self.page_range_path + '.metadata')
         if data is not None:
+#           print('Page range is valid!')
             self.num_of_columns = data[0]
             self.base_page_number = data[1]
             self.tail_page_number = data[2]
             self.num_records = data[3]
+            
+            for page_number, num_records in enumerate(data[4]):
+                self.arr_of_base_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_b/base_' + str(page_number), num_records))
+            for page_number, num_records in enumerate(data[5]):
+                self.arr_of_tail_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_t/tail_' + str(page_number), num_records))
 
     def close(self):
         bufferpool.shared.write_metadata(self.page_range_path + '.metadata', (
             self.num_of_columns,
             self.base_page_number,
             self.tail_page_number,
-            self.num_records
+            self.num_records,
+            [base_page.num_records for base_page in self.arr_of_base_pages],
+            [tail_page.num_records for tail_page in self.arr_of_tail_pages]
         ))
+        

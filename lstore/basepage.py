@@ -4,13 +4,15 @@ from lstore.record import Record
 import lstore.bufferpool as bufferpool
 
 class BasePage:
+	
+	__slots__ = 'num_columns', 'num_user_columns', 'path', 'num_records'
 
-	def __init__(self, columns: int, path: str):
+	def __init__(self, columns: int, path: str, num_records=0):
 		assert columns > 0
 		self.num_columns = columns + 4
 		self.num_user_columns = columns
-		self.num_records = 0
 		self.path = path
+		self.num_records = 0
 #		print(path)
 		"""
 		4 Internal columns = 4 Physical pages for internal metadata

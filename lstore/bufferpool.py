@@ -39,6 +39,12 @@ class Bufferpool:
 		self.create_folder('')
 
 	"""
+	Return True if database exists in the current path
+	"""
+	def db_exists(self):
+		return os.path.exists(self.path + '/database.db')
+
+	"""
 	Create folder given relative path
 	"""
 
