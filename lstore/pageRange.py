@@ -1,20 +1,26 @@
 from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
+import lstore.bufferpool as bufferpool
+from lstore.config import PAGE_RANGE_SIZE
 
 class PageRange:
 
     __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
-        'range_number', 'base_page_number', 'tail_page_number', 'num_records')
+        'range_number', 'base_page_number', 'tail_page_number', 'page_range_path', 'num_records')
 
-    def __init__(self, columns, range_number):
+    def __init__(self, table_name, columns, range_number):
         self.num_of_columns = columns
         self.arr_of_base_pages=[]
         self.arr_of_tail_pages=[]
         self.range_number = range_number
         self.base_page_number = -1
         self.tail_page_number = -1
+        self.page_range_path = table_name + '/page_range_' + str(range_number)
         self.num_records = 0
+
+        bufferpool.shared.create_folder(self.page_range_path + '_b')
+        bufferpool.shared.create_folder(self.page_range_path + '_t')
 
     """
     Debug Only
@@ -49,7 +55,7 @@ class PageRange:
     """
 
     def pageRange_has_capacity(self):
-        return len(self.arr_of_base_pages) < 8
+        return len(self.arr_of_base_pages) < PAGE_RANGE_SIZE
 
     def is_page_full(self, page_number, isTail=False):
         if page_number == -1:
@@ -67,12 +73,14 @@ class PageRange:
 
     def create_a_new_page(self, isTail=False):
         if isTail:
-            self.arr_of_tail_pages.append(BasePage(self.num_of_columns))
+#           print('NEW TAIL PAGE! from ' + self.page_range_path)
             self.tail_page_number += 1
+            self.arr_of_tail_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_t/tail_' + str(self.tail_page_number)))
         else:
             assert self.pageRange_has_capacity()
-            self.arr_of_base_pages.append(BasePage(self.num_of_columns))
+#           print('NEW BASE PAGE! from ' + self.page_range_path)
             self.base_page_number += 1
+            self.arr_of_base_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_b/base_' + str(self.base_page_number)))
 
     """
     Write a record, given the columns data
@@ -120,6 +128,8 @@ class PageRange:
 
             base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
+#           print('look' + str(tail_page_number))
+#           print('max' + str(len(self.arr_of_tail_pages)))
             updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
 
             for index in range(self.num_of_columns):
@@ -199,3 +209,19 @@ class PageRange:
         # set base record indirection to new tail page rid
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
+
+    def open(self):
+        data = bufferpool.shared.read_metadata(self.page_range_path + '.metadata')
+        if data is not None:
+            self.num_of_columns = data[0]
+            self.base_page_number = data[1]
+            self.tail_page_number = data[2]
+            self.num_records = data[3]
+
+    def close(self):
+        bufferpool.shared.write_metadata(self.page_range_path + '.metadata', (
+            self.num_of_columns,
+            self.base_page_number,
+            self.tail_page_number,
+            self.num_records
+        ))

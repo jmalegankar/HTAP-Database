@@ -1,5 +1,7 @@
 from lstore.index import Index
 from lstore.pageRange import PageRange
+from lstore.config import PAGE_RANGE_SIZE
+import lstore.bufferpool as bufferpool
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
@@ -22,6 +24,9 @@ class Table:
         self.page_range_number = -1
         self.index = Index(self)
         self.index.create_index(key)
+        
+        # PAGE_RANGE_SIZE base pages, each 511 records is the max
+        self.records_per_range = PAGE_RANGE_SIZE * 511
 
     def __str__(self):
         string = 'num_columns: {}, page_range_number: {}\n'.format(
@@ -42,19 +47,30 @@ class Table:
     def create_a_new_page_range(self):
         assert self.page_range_number < 99
         self.page_range_number += 1
-        self.page_ranges.append(PageRange(self.num_columns, self.page_range_number))
+        self.page_ranges.append(PageRange(self.name, self.num_columns, self.page_range_number))
 
     def is_page_range_full(self):
         if self.page_range_number == -1:
             return True
-
-        # 8 base pages, each 512 records is the max
-        return self.page_ranges[self.page_range_number].num_records >= 4096
+        return self.page_ranges[self.page_range_number].num_records >= self.records_per_range
 
     def get_next_page_range_number(self):
         if self.is_page_range_full():
             self.create_a_new_page_range()
         return self.page_range_number
+
+    def close(self):
+        bufferpool.shared.write_metadata('table.metadata', (
+            self.name,
+            self.key,
+            self.num_columns,
+            self.page_range_number
+        ))
+
+        for page_range in self.page_ranges:
+            page_range.close()
+        
+        bufferpool.shared.close()
 
     def __merge(self):
         print("merge is happening")

@@ -1,5 +1,6 @@
 from lstore.record import Record
 from lstore.parser import *
+import lstore.bufferpool as bufferpool
 import re
 
 class Query:
@@ -41,9 +42,11 @@ class Query:
             for col, value in enumerate(data):
                 if value is not None:
                     self.table.index.remove(col, value, rid)
-        except:
+        except ValueError:
+            bufferpool.shared.unpin_all()
             return False
         else:
+            bufferpool.shared.unpin_all()
             return True
 
     """
@@ -69,10 +72,12 @@ class Query:
             for column_index in range(self.table.num_columns):
                 if self.table.index.indexed_columns[column_index] == 1:
                     self.table.index.set(column_index, columns[column_index], rid)
-                
-            return True
-        except:
+        except ValueError:
+            bufferpool.shared.unpin_all()
             return False
+        else:
+            bufferpool.shared.unpin_all()
+            return True
 
     """
     # Read a record with specified key
@@ -123,8 +128,11 @@ class Query:
                     
                     if data[index_column] == index_value:
                         results.append(Record(rid, self.table.key, data))
+    
+            bufferpool.shared.unpin_all()
             return results
-        except:
+        except ValueError:
+            bufferpool.shared.unpin_all()
             return False
 
     """
@@ -154,9 +162,11 @@ class Query:
             for col, value in enumerate(columns):
                 if value is not None and self.table.index.indexed_columns[col] == 1:
                     self.table.index.replace(col, data[col], value, rid)
-        except KeyError:
+        except ValueError:
+            bufferpool.shared.unpin_all()
             return False
         else:
+            bufferpool.shared.unpin_all()
             return True
 
     """
@@ -178,8 +188,11 @@ class Query:
             for rid in rids:
                 page_range_number = get_page_range_number(rid)
                 total += self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)[aggregate_column_index]
+
+            bufferpool.shared.unpin_all()
             return total
         except:
+            bufferpool.shared.unpin_all()
             return False
 
     """
