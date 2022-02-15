@@ -50,7 +50,7 @@ class Bufferpool:
 	"""
 
 	def write_page(self, relative_path, physical_page_number, data):
-		print('WRITE_PAGE ' + self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db')
+#		print('WRITE_PAGE ' + self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db')
 		with open(self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db', 'wb', pickle.HIGHEST_PROTOCOL) as out_f:
 			pickle.dump(data, out_f)
 
@@ -98,7 +98,7 @@ class Bufferpool:
 			# need to bring in
 			bufferpool_index = self.bufferpool_size
 			if bufferpool_index == BUFFERPOOL_SIZE:
-				print('Need to kick someone out')
+#				print('Need to kick someone out')
 				# need to kick pages
 				oldest_page = self.logical_pages[0]
 				oldest_page_index = 0
@@ -113,8 +113,8 @@ class Bufferpool:
 				if oldest_page.path in self.logical_pages_directory:
 					del self.logical_pages_directory[oldest_page.path]
 
-				print('Adios ' + oldest_page.path)
-				print('Hola ' + path)
+#				print('Adios ' + oldest_page.path)
+#				print('Hola ' + path)
 				self.create_folder(oldest_page.path)
 
 				# write to disk if dirty
@@ -126,7 +126,7 @@ class Bufferpool:
 				# we have free space now
 				bufferpool_index = oldest_page_index
 			else:
-				print('Welcome, no kicking ' + path)
+#				print('Welcome, no kicking ' + path)
 				self.bufferpool_size += 1
 
 			new_logical_page = BufferpoolPage(path)
