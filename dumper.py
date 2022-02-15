@@ -14,8 +14,11 @@ while True:
 	if os.path.exists(location):
 		with open(location, 'rb', pickle.HIGHEST_PROTOCOL) as in_f:
 			data = pickle.load(in_f)
-			page = Page()
-			page.open(data)
-			print(page)
+			if location.endswith('.db'):
+				page = Page()
+				page.open(data)
+				print(page)
+			else:
+				print(data)
 	else:
 		print('Invalid file')

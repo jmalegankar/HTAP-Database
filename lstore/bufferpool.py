@@ -74,6 +74,8 @@ class Bufferpool:
 	"""
 
 	def write_metadata(self, relative_path, data):
+#		print('write_metadata at ' + relative_path)
+#		print(data)
 		with open(self.path + '/' + relative_path, 'wb', pickle.HIGHEST_PROTOCOL) as out_f:
 			pickle.dump(data, out_f)
 

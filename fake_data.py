@@ -100,13 +100,17 @@ class TestDatabase(unittest.TestCase):
 		self.assertEqual(query.select(53, 3, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
 		self.assertEqual(query.select(1234567890, 4, [1] * 5)[0].columns, [50, 51, 52, 53, 1234567890])
 
-		print(query.select(0, 0, [1]*5))
+#		print('about to udpate!')
+#		print(query.select(0, 0, [1]*5))
 		self.assertTrue(query.insert(-1, -1, -1, -1, -1))
 		self.assertTrue(query.update(0, None, None, -1, -1, -1))
-		self.assertTrue(query.update(1, None, None, -1, -1, -1))
-		print(query.select(0, 0, [1]*5))
-		db.close()
+		self.assertTrue(query.update(1, None, None, 2, None, 3))
 		
+		self.assertTrue(query.select(0, 0, [1] * 5)[0].columns, [0, 1, -1, -1, -1])
+		self.assertTrue(query.select(1, 0, [1] * 5)[0].columns, [1, 2, 2, 3, 3])
+#		print(query.select(0, 0, [1]*5))
+		db.close()
+
 		new_db = Database()
 		new_db.open('./query_insert_select')
 		new_grades_table = new_db.get_table('Grades')
@@ -119,6 +123,8 @@ class TestDatabase(unittest.TestCase):
 		new_result = new_query.select(-1, 0, [1] * 5)
 		self.assertEqual(len(new_result), 1)
 		self.assertEqual(new_result[0].columns, [-1, -1, -1, -1, -1])
+	
+		self.assertTrue(new_query.select(1, 0, [1] * 5)[0].columns, [1, 2, 2, 3, 3])
 		
 		new_db.close()
 
@@ -438,7 +444,8 @@ class TestDatabase(unittest.TestCase):
 		
 		self.assertTrue(query.sql('DELETE 1'))
 		self.assertEqual(len(query.sql('SELECT * WHERE 0=1')), 0)
-
+"""
+"""
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
 	

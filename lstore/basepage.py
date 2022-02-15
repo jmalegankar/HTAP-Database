@@ -12,8 +12,7 @@ class BasePage:
 		self.num_columns = columns + 4
 		self.num_user_columns = columns
 		self.path = path
-		self.num_records = 0
-#		print(path)
+		self.num_records = num_records
 		"""
 		4 Internal columns = 4 Physical pages for internal metadata
 		first page is for the indirection col
