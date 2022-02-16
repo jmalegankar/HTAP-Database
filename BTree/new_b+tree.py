@@ -236,7 +236,7 @@ class BTree(object):
     """
     root: InternalNode
 
-    def __init__(self, max_limit=512):
+    def __init__(self, max_limit=4):
         self.root = LeafNode()
         self.max_limit = max_limit if max_limit > 2 else 2
         self.min_limit = self.max_limit // 2
