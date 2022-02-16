@@ -53,7 +53,8 @@ class BasePage:
 	"""
 
 	def get(self, rec_num, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].get(rec_num)
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num)
+#		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].get(rec_num)
 #		return self.phys_pages[column].get(rec_num)
 
 	"""
@@ -61,11 +62,12 @@ class BasePage:
 	"""
 
 	def set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].set(rec_num, value)
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num, value)
+#		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].set(rec_num, value)
 #		return self.phys_pages[column].set(rec_num, value)
 
 	def get_and_set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].get_and_set(rec_num, value)
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num, value, True)
 #		return self.phys_pages[column].get_and_set(rec_num, value)
 
 	"""
@@ -76,15 +78,21 @@ class BasePage:
 
 	def get_cols(self, rec_num, columns):
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
-		return [None if v == 0 else phys_pages[4 + i].get(rec_num) for i, v in enumerate(columns)]
+		result = [None if v == 0 else phys_pages.pages[4 + i].get(rec_num) for i, v in enumerate(columns)]
+		phys_pages.pinned -= 1 # Finished using, unpin the page
+		return result
 
 	def get_user_cols(self, rec_num):
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
-		return [phys_pages[4 + i].get(rec_num) for i in range(self.num_user_columns)]
+		result =  [phys_pages.pages[4 + i].get(rec_num) for i in range(self.num_user_columns)]
+		phys_pages.pinned -= 1 # Finished using, unpin the page
+		return result
 
 	def get_all_cols(self, rec_num):
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
-		return [phys_pages[i].get(rec_num) for i in range(self.num_columns)]
+		result =  [phys_pages.pages[i].get(rec_num) for i in range(self.num_columns)]
+		phys_pages.pinned -= 1 # Finished using, unpin the page
+		return result
 
 	"""
 	Write a record to the physical page
@@ -103,15 +111,17 @@ class BasePage:
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
 
 		# Internal columns
-		phys_pages[0].write(0) # indirection, default = ?
-		phys_pages[1].write(record.rid) # rid, given by the PageRange
-		phys_pages[2].write(int(time.time())) # time
-		phys_pages[3].write(0) # schema, default = 0
+		phys_pages.pages[0].write(0) # indirection, default = ?
+		phys_pages.pages[1].write(record.rid) # rid, given by the PageRange
+		phys_pages.pages[2].write(int(time.time())) # time
+		phys_pages.pages[3].write(0) # schema, default = 0
 
 		# User columns
 		for idx in range(self.num_user_columns):
-			phys_pages[idx + 4].write(record.columns[idx])
+			phys_pages.pages[idx + 4].write(record.columns[idx])
+
 		self.num_records += 1
+		phys_pages.pinned -= 1 # Finished using, unpin the page
 
 
 	# takes in a record and writes it
@@ -121,20 +131,21 @@ class BasePage:
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
 
-		phys_pages[0].write(base_rid)
-		phys_pages[1].write(record.rid)
-		phys_pages[2].write(int(time.time()))
+		phys_pages.pages[0].write(base_rid)
+		phys_pages.pages[1].write(record.rid)
+		phys_pages.pages[2].write(int(time.time()))
 
 		schema = 0
 		for idx in range(self.num_user_columns):
 			if record.columns[idx] is not None:
 				schema = (schema | (1 << self.num_user_columns-(idx+1)))
-				phys_pages[idx + 4].write(record.columns[idx])
+				phys_pages.pages[idx + 4].write(record.columns[idx])
 			else:
-				phys_pages[idx + 4].write(0)
+				phys_pages.pages[idx + 4].write(0)
 
-		phys_pages[3].write(schema)
+		phys_pages.pages[3].write(schema)
 		self.num_records += 1
+		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return schema
 
 	def tail_update(self, previous_data, record: Record):
@@ -142,17 +153,19 @@ class BasePage:
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
 
-		phys_pages[0].write(previous_data[1]) # indirection is previous tail RID
-		phys_pages[1].write(record.rid)
-		phys_pages[2].write(int(time.time()))
+		phys_pages.pages[0].write(previous_data[1]) # indirection is previous tail RID
+		phys_pages.pages[1].write(record.rid)
+		phys_pages.pages[2].write(int(time.time()))
 
 		schema = previous_data[3]
 		for index in range(self.num_user_columns):
 			if record.columns[index] is not None:
 				schema = (schema | (1 << self.num_user_columns - (index + 1)))
-				phys_pages[index + 4].write(record.columns[index])
+				phys_pages.pages[index + 4].write(record.columns[index])
 			else:
-				phys_pages[index + 4].write(previous_data[index + 4])
-		phys_pages[3].write(schema)
+				phys_pages.pages[index + 4].write(previous_data[index + 4])
+
+		phys_pages.pages[3].write(schema)
 		self.num_records += 1
+		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return schema

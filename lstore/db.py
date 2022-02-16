@@ -35,6 +35,9 @@ class Database():
     :param key: int             #Index of table key in columns
     """
     def create_table(self, name, num_columns, key_index, open_from_db=False):
+        if name in self.tables:
+            return self.tables[name]
+
         table = Table(name, num_columns, key_index, open_from_db)
         self.tables[name] = table
 

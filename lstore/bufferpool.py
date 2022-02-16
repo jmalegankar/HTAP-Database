@@ -18,7 +18,7 @@ class BufferpoolPage:
 
 class Bufferpool:
 
-	__slots__ = 'path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'pinned_pages'
+	__slots__ = 'path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory'
 
 	def __init__(self):
 		self.start()
@@ -28,7 +28,6 @@ class Bufferpool:
 		self.logical_pages = [None] * BUFFERPOOL_SIZE # array of BufferpoolPage
 		self.bufferpool_size = 0
 		self.logical_pages_directory = dict() # map logical base/tail pages to index
-		self.pinned_pages = [] # list of pinned page. For M3, upgrade to dict([]), 1 list per transaction
 
 	"""
 	Set the database path
@@ -88,19 +87,30 @@ class Bufferpool:
 			return pickle.load(in_f)
 		return None
 
-
-	def get_logical_pages(self, path, num_columns):
+	"""
+	Given path, return BufferpoolPage
+	"""
+	def get_logical_pages(self, path, num_columns, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False):
 		try:
 			if path in self.logical_pages_directory:
 				# cache hit, already in bufferpool
 				bufferpool_page = self.logical_pages[self.logical_pages_directory[path]]
 				bufferpool_page.last_access = time.time()
 
+				# No need to pin!
+				if atomic:
+					if set_to is not None:
+						if set_and_get:
+							return bufferpool_page.pages[column].get_and_set(rec_num, set_to)
+						bufferpool_page.pages[column].set(rec_num, set_to)
+
+						return
+					return bufferpool_page.pages[column].get(rec_num)
+
 				# TODO: M3 need to see if already pinned by transaction
 				if bufferpool_page.pinned == 0:
 					bufferpool_page.pinned += 1
-					self.pinned_pages.append(self.logical_pages_directory[path])
-				return bufferpool_page.pages
+				return bufferpool_page
 
 
 			# need to bring in
@@ -110,13 +120,20 @@ class Bufferpool:
 				# need to kick pages
 				oldest_page = self.logical_pages[0]
 				oldest_page_index = 0
-				
+				has_free_space = False
+
 				for index, logical_page in enumerate(self.logical_pages):
-					if logical_page.pinned == 0: # not pinned
+					if logical_page.pinned <= 0: # not pinned
+						has_free_space = True
 						if logical_page.last_access < oldest_page.last_access:
 							oldest_page_index = index
 							oldest_page = logical_page
-							
+				
+				if not has_free_space:
+					print('ERROR: We are kicking out a pinned page!')
+#					print(self.logical_pages_directory)
+#					print(self.logical_pages)
+					input()
 				# kick out this logical page
 				if oldest_page.path in self.logical_pages_directory:
 					del self.logical_pages_directory[oldest_page.path]
@@ -153,17 +170,22 @@ class Bufferpool:
 
 			self.logical_pages[bufferpool_index] = new_logical_page
 			self.logical_pages_directory[path] = bufferpool_index
-			self.pinned_pages.append(bufferpool_index)
 
-			return self.logical_pages[bufferpool_index].pages
+			if atomic:
+				self.logical_pages[bufferpool_index].pinned = 0
+
+				if set_to is not None:
+					if set_and_get:
+						return self.logical_pages[bufferpool_index].pages[column].get_and_set(rec_num, set_to)
+					self.logical_pages[bufferpool_index].pages[column].set(rec_num, set_to)
+					return
+				return self.logical_pages[bufferpool_index].pages[column].get(rec_num)
+			return self.logical_pages[bufferpool_index]
 		except ValueError as e:
 			print(e)
 
 	def unpin_all(self):
-		for pinned_page in self.pinned_pages:
-			if 0 <= pinned_page < self.bufferpool_size:
-				self.logical_pages[pinned_page].pinned -= 1
-		self.pinned_pages = []
+		pass
 
 	def close(self):
 		for page in self.logical_pages:

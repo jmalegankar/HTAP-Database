@@ -1,0 +1,41 @@
+4
+Inserting 10k records took:  			 0.082208
+Updating 10k records took:  			 6.632808
+Selecting 10k records took:  			 1.82686
+Aggregate 10k of 100 record batch took:	 0.4932180000000006
+Deleting 10k records took:  			 1.1351790000000008
+
+8
+Inserting 10k records took:  			 0.07971700000000001
+Updating 10k records took:  			 4.90446
+Selecting 10k records took:  			 1.6344760000000003
+Aggregate 10k of 100 record batch took:	 0.16274299999999986
+Deleting 10k records took:  			 0.3187540000000002
+
+16
+Inserting 10k records took:  			 0.076859
+Updating 10k records took:  			 1.7655319999999999
+Selecting 10k records took:  			 1.228579
+Aggregate 10k of 100 record batch took:	 0.07535000000000025
+Deleting 10k records took:  			 0.090306
+
+32
+Inserting 10k records took:  			 0.07382100000000001
+Updating 10k records took:  			 0.322742
+Selecting 10k records took:  			 0.45298199999999994
+Aggregate 10k of 100 record batch took:	 0.07287100000000002
+Deleting 10k records took:  			 0.088372
+
+64
+Inserting 10k records took:  			 0.07411600000000002
+Updating 10k records took:  			 0.156776
+Selecting 10k records took:  			 0.07544300000000004
+Aggregate 10k of 100 record batch took:	 0.06969700000000001
+Deleting 10k records took:  			 0.08252999999999999
+
+128
+Inserting 10k records took:  			 0.07446799999999999
+Updating 10k records took:  			 0.156391
+Selecting 10k records took:  			 0.07928800000000003
+Aggregate 10k of 100 record batch took:	 0.07001200000000002
+Deleting 10k records took:  			 0.08259200000000005

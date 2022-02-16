@@ -131,8 +131,6 @@ class PageRange:
 
             base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
-#           print('look' + str(tail_page_number))
-#           print('max' + str(len(self.arr_of_tail_pages)))
             updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
 
             for index in range(self.num_of_columns):

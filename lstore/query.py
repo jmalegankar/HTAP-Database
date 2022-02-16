@@ -1,6 +1,5 @@
 from lstore.record import Record
 from lstore.parser import *
-import lstore.bufferpool as bufferpool
 import re
 
 class Query:
@@ -43,10 +42,8 @@ class Query:
                 if value is not None:
                     self.table.index.remove(col, value, rid)
         except ValueError:
-            bufferpool.shared.unpin_all()
             return False
         else:
-            bufferpool.shared.unpin_all()
             return True
 
     """
@@ -73,10 +70,8 @@ class Query:
                 if self.table.index.indexed_columns[column_index] == 1:
                     self.table.index.set(column_index, columns[column_index], rid)
         except ValueError:
-            bufferpool.shared.unpin_all()
             return False
         else:
-            bufferpool.shared.unpin_all()
             return True
 
     """
@@ -129,10 +124,8 @@ class Query:
                     if data[index_column] == index_value:
                         results.append(Record(rid, self.table.key, data))
     
-            bufferpool.shared.unpin_all()
             return results
         except ValueError:
-            bufferpool.shared.unpin_all()
             return False
 
     """
@@ -163,10 +156,8 @@ class Query:
                 if value is not None and self.table.index.indexed_columns[col] == 1:
                     self.table.index.replace(col, data[col], value, rid)
         except ValueError:
-            bufferpool.shared.unpin_all()
             return False
         else:
-            bufferpool.shared.unpin_all()
             return True
 
     """
@@ -189,10 +180,8 @@ class Query:
                 page_range_number = get_page_range_number(rid)
                 total += self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)[aggregate_column_index]
 
-            bufferpool.shared.unpin_all()
             return total
         except:
-            bufferpool.shared.unpin_all()
             return False
 
     """
