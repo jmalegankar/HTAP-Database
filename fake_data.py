@@ -444,6 +444,40 @@ class TestDatabase(unittest.TestCase):
 		
 		self.assertTrue(query.sql('DELETE 1'))
 		self.assertEqual(len(query.sql('SELECT * WHERE 0=1')), 0)
+
+	def test_everything(self):
+		try:
+			shutil.rmtree('./test_everything')
+		except:
+			pass
+
+		db = Database()
+		db.open('./test_everything')
+
+		table1 = db.create_table('table1', 3, 0)
+		query1 = Query(table1)
+		
+		self.assertTrue(query1.insert(1, 2, 3))
+		self.assertTrue(query1.insert(4, 5, 6))
+		self.assertEqual(query1.select(1, 0, [1,1,1])[0].columns, [1, 2, 3])
+		self.assertEqual(query1.select(4, 0, [1,1,1])[0].columns, [4, 5, 6])
+
+		db.close()
+
+		del db
+		del table1
+		del query1
+		
+		db = Database()
+		db.open('./test_everything')
+
+		table1 = db.get_table('table1')
+		query1 = Query(table1)
+		
+		self.assertEqual(query1.select(1, 0, [1,1,1])[0].columns, [1, 2, 3])
+		self.assertEqual(query1.select(4, 0, [1,1,1])[0].columns, [4, 5, 6])
+		
+		db.close()
 """
 """
 if __name__ == '__main__':
