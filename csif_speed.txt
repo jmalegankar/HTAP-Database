@@ -1,0 +1,143 @@
+8:
+insert_test:
+Mean 1.596264366999094 seconds
+==============================
+sequential_select_test:
+Mean 0.9456347680024919 seconds
+==============================
+random_select_test:
+Mean 118.8896243440031 seconds
+==============================
+insert_sequential_select_test:
+Mean 2.4856726240032003 seconds
+==============================
+insert_random_select_test:
+Mean 2.544693782001559 seconds
+==============================
+update_test:
+Mean 2.8592390909980168 seconds
+==============================
+10000 keys checked!
+update_random_test:
+Mean 361.947255330997 seconds
+==============================
+delete_select_test:
+Mean 1.1305028979986673 seconds
+==============================
+delete_select_test:
+Mean 1.7306395820050966 seconds
+==============================
+sum_test:
+Mean 0.799063570004364 seconds
+==============================
+sum_test:
+Mean 1.198714285994356 seconds
+==============================
+
+16:
+insert_test:
+Mean 1.8936402350009303 seconds
+==============================
+sequential_select_test:
+Mean 1.38026310299756 seconds
+==============================
+random_select_test:
+Mean 46.94363923200581 seconds
+==============================
+insert_sequential_select_test:
+Mean 3.1589899379978306 seconds
+==============================
+insert_random_select_test:
+Mean 3.0868191129993647 seconds
+==============================
+update_test:
+Mean 3.760801342999912 seconds
+==============================
+10000 keys checked!
+update_random_test:
+Mean 140.77019122699858 seconds
+==============================
+delete_select_test:
+Mean 1.5047008969995659 seconds
+==============================
+delete_select_test:
+Mean 2.342418115003966 seconds
+==============================
+sum_test:
+Mean 0.9373459850030486 seconds
+==============================
+sum_test:
+Mean 1.5144796509994194 seconds
+==============================
+
+32:
+insert_test:
+Mean 1.8535443310029223 seconds
+==============================
+sequential_select_test:
+Mean 1.362095030999626 seconds
+==============================
+random_select_test:
+Mean 0.6874267540042638 seconds
+==============================
+insert_sequential_select_test:
+Mean 1.726833737004199 seconds
+==============================
+insert_random_select_test:
+Mean 1.7626824289982324 seconds
+==============================
+update_test:
+Mean 3.4875105760002043 seconds
+==============================
+10000 keys checked!
+update_random_test:
+Mean 3.4558406040014233 seconds
+==============================
+delete_select_test:
+Mean 1.5108228269964457 seconds
+==============================
+delete_select_test:
+Mean 2.2809582330010016 seconds
+==============================
+sum_test:
+Mean 0.9786063470019144 seconds
+==============================
+sum_test:
+Mean 1.444366304000141 seconds
+==============================
+
+64:
+insert_test:
+Mean 1.7219161160028307 seconds
+==============================
+sequential_select_test:
+Mean 1.2811012450038106 seconds
+==============================
+random_select_test:
+Mean 0.6925601789989742 seconds
+==============================
+insert_sequential_select_test:
+Mean 1.760233208995487 seconds
+==============================
+insert_random_select_test:
+Mean 1.7461016350061982 seconds
+==============================
+update_test:
+Mean 3.247377758001676 seconds
+==============================
+10000 keys checked!
+update_random_test:
+Mean 3.077112961997045 seconds
+==============================
+delete_select_test:
+Mean 1.4968518699970446 seconds
+==============================
+delete_select_test:
+Mean 2.2915159909971408 seconds
+==============================
+sum_test:
+Mean 0.8696580240066396 seconds
+==============================
+sum_test:
+Mean 1.4553254460042808 seconds
+==============================

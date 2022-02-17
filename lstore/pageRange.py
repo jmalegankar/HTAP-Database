@@ -76,14 +76,18 @@ class PageRange:
 
     def create_a_new_page(self, isTail=False):
         if isTail:
-#           print('NEW TAIL PAGE! from ' + self.page_range_path)
             self.tail_page_number += 1
-            self.arr_of_tail_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_t/tail_' + str(self.tail_page_number)))
+            self.arr_of_tail_pages.append(BasePage(
+                self.num_of_columns,
+                self.page_range_path + '_t/tail_' + str(self.tail_page_number)
+            ))
         else:
             assert self.pageRange_has_capacity()
-#           print('NEW BASE PAGE! from ' + self.page_range_path)
             self.base_page_number += 1
-            self.arr_of_base_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_b/base_' + str(self.base_page_number)))
+            self.arr_of_base_pages.append(BasePage(
+                self.num_of_columns,
+                self.page_range_path + '_b/base_' + str(self.base_page_number)
+            ))
 
     """
     Write a record, given the columns data
@@ -212,19 +216,27 @@ class PageRange:
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
 
     def open(self):
-#       print('Opening new page range')
         data = bufferpool.shared.read_metadata(self.page_range_path + '.metadata')
         if data is not None:
-#           print('Page range is valid!')
             self.num_of_columns = data[0]
             self.base_page_number = data[1]
             self.tail_page_number = data[2]
             self.num_records = data[3]
-            
-            for page_number, num_records in enumerate(data[4]):
-                self.arr_of_base_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_b/base_' + str(page_number), num_records))
+
+            for page_number, page_data in enumerate(data[4]):
+                self.arr_of_base_pages.append(BasePage(
+                        self.num_of_columns,
+                        self.page_range_path + '_b/base_' + str(page_number),
+                        page_data[0],   # num_records
+                        page_data[1]    # tps
+                ))
+
             for page_number, num_records in enumerate(data[5]):
-                self.arr_of_tail_pages.append(BasePage(self.num_of_columns, self.page_range_path + '_t/tail_' + str(page_number), num_records))
+                self.arr_of_tail_pages.append(BasePage(
+                    self.num_of_columns,
+                    self.page_range_path + '_t/tail_' + str(page_number),
+                    num_records
+                ))
 
     def close(self):
         bufferpool.shared.write_metadata(self.page_range_path + '.metadata', (
@@ -232,7 +244,7 @@ class PageRange:
             self.base_page_number,
             self.tail_page_number,
             self.num_records,
-            [base_page.num_records for base_page in self.arr_of_base_pages],
+            [(base_page.num_records, base_page.tps) for base_page in self.arr_of_base_pages],
             [tail_page.num_records for tail_page in self.arr_of_tail_pages]
         ))
         

@@ -4,24 +4,26 @@ from lstore.record import Record
 import lstore.bufferpool as bufferpool
 
 class BasePage:
-	
-	__slots__ = 'num_columns', 'num_user_columns', 'path', 'num_records'
 
-	def __init__(self, columns: int, path: str, num_records=0):
+	"""
+	4 Internal columns = 4 Physical pages for internal metadata
+	first page is for the indirection col
+	second page is for rid col
+	third page is for timestamp col
+	fourth page is for schema col
+	The rest are the columns provided by the user
+	"""
+
+	__slots__ = 'num_columns', 'num_user_columns', 'path', 'num_records', 'tps'
+
+	def __init__(self, columns: int, path: str, num_records=0, tps=-1):
 		assert columns > 0
-		self.num_columns = columns + 4
+		
+		self.num_columns = columns + 4 # Total number of columns (including internal columns)
 		self.num_user_columns = columns
-		self.path = path
-		self.num_records = num_records
-		"""
-		4 Internal columns = 4 Physical pages for internal metadata
-		first page is for the indirection col
-		second page is for rid col
-		third page is for timestamp col
-		fourth page is for schema col
-		The rest are the columns provided by the user
-		"""
-#		self.phys_pages = [Page() for i in range(self.num_columns)]
+		self.path = path # The location of this page in disk
+		self.num_records = num_records # Number of records
+		self.tps = tps # Tail-Page Sequence Number, < 0 means this page is a tail page
 
 	"""
 	Debug Only
@@ -54,8 +56,6 @@ class BasePage:
 
 	def get(self, rec_num, column):
 		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num)
-#		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].get(rec_num)
-#		return self.phys_pages[column].get(rec_num)
 
 	"""
 	quicker setter to access page set
@@ -63,12 +63,9 @@ class BasePage:
 
 	def set(self, rec_num, value, column):
 		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num, value)
-#		return bufferpool.shared.get_logical_pages(self.path, self.num_columns)[column].set(rec_num, value)
-#		return self.phys_pages[column].set(rec_num, value)
 
 	def get_and_set(self, rec_num, value, column):
 		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num, value, True)
-#		return self.phys_pages[column].get_and_set(rec_num, value)
 
 	"""
 	Get multiple col
@@ -126,6 +123,7 @@ class BasePage:
 
 	# takes in a record and writes it
 	# used to update meaning making a new tail record
+
 	def update(self, base_rid, record: Record):
 		assert len(record.columns) == self.num_user_columns
 

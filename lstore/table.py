@@ -26,7 +26,6 @@ class Table:
         self.records_per_range = PAGE_RANGE_SIZE * 511
 
         if open_from_db and self.open():
-#           print('Open table ' + name + ', status=OK!')
             self.index.create_index(self.key)
         else:
             self.key = key
@@ -80,7 +79,6 @@ class Table:
             self.index = data_index
             return True
 
-#       print('Open table ' + self.name, ', status=ERROR')
         return False
 
     def close(self):

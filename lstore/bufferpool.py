@@ -23,6 +23,10 @@ class Bufferpool:
 	def __init__(self):
 		self.start()
 	
+	"""
+	Database().open() will call this function to start the bufferpool
+	"""
+
 	def start(self):
 		self.path = './database'
 		self.logical_pages = [None] * BUFFERPOOL_SIZE # array of BufferpoolPage
@@ -40,6 +44,7 @@ class Bufferpool:
 	"""
 	Return True if database exists in the current path
 	"""
+
 	def db_exists(self):
 		return os.path.exists(self.path + '/database.db')
 
@@ -55,7 +60,6 @@ class Bufferpool:
 	"""
 
 	def write_page(self, relative_path, physical_page_number, data):
-#		print('WRITE_PAGE ' + self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db')
 		with open(self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db', 'wb', pickle.HIGHEST_PROTOCOL) as out_f:
 			pickle.dump(data, out_f)
 
@@ -73,8 +77,6 @@ class Bufferpool:
 	"""
 
 	def write_metadata(self, relative_path, data):
-#		print('write_metadata at ' + relative_path)
-#		print(data)
 		with open(self.path + '/' + relative_path, 'wb', pickle.HIGHEST_PROTOCOL) as out_f:
 			pickle.dump(data, out_f)
 
@@ -90,34 +92,34 @@ class Bufferpool:
 	"""
 	Given path, return BufferpoolPage
 	"""
+
 	def get_logical_pages(self, path, num_columns, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False):
 		try:
 			if path in self.logical_pages_directory:
-				# cache hit, already in bufferpool
+				# Cache hit, already in bufferpool
 				bufferpool_page = self.logical_pages[self.logical_pages_directory[path]]
 				bufferpool_page.last_access = time.time()
 
-				# No need to pin!
 				if atomic:
+					# Only need once, no need to pin!
 					if set_to is not None:
 						if set_and_get:
 							return bufferpool_page.pages[column].get_and_set(rec_num, set_to)
-						bufferpool_page.pages[column].set(rec_num, set_to)
 
+						bufferpool_page.pages[column].set(rec_num, set_to)
 						return
+
 					return bufferpool_page.pages[column].get(rec_num)
 
-				# TODO: M3 need to see if already pinned by transaction
+				# Reader/writer wants to hold the bufferpool page
 				if bufferpool_page.pinned == 0:
+					# Pin the page
 					bufferpool_page.pinned += 1
 				return bufferpool_page
 
-
-			# need to bring in
+			# Page not in bufferpool
 			bufferpool_index = self.bufferpool_size
-			if bufferpool_index == BUFFERPOOL_SIZE:
-#				print('Need to kick someone out')
-				# need to kick pages
+			if bufferpool_index == BUFFERPOOL_SIZE: # if bufferpool doesnt have free space anymore
 				oldest_page = self.logical_pages[0]
 				oldest_page_index = 0
 				has_free_space = False
@@ -131,15 +133,11 @@ class Bufferpool:
 				
 				if not has_free_space:
 					print('ERROR: We are kicking out a pinned page!')
-#					print(self.logical_pages_directory)
-#					print(self.logical_pages)
-					input()
+
 				# kick out this logical page
 				if oldest_page.path in self.logical_pages_directory:
 					del self.logical_pages_directory[oldest_page.path]
 
-#				print('Adios ' + oldest_page.path)
-#				print('Hola ' + path)
 				self.create_folder(oldest_page.path)
 
 				# write to disk if dirty
@@ -151,51 +149,61 @@ class Bufferpool:
 				# we have free space now
 				bufferpool_index = oldest_page_index
 			else:
-#				print('Welcome, no kicking ' + path)
+				# bufferpool has spaces
 				self.bufferpool_size += 1
 
+			# Create a BufferpoolPage object
 			new_logical_page = BufferpoolPage(path)
 
-			# page in database
+			# pages in database
 			if os.path.isdir(self.path + '/' + path):
-#				print('READ FROM FILE')
 				for physical_page_number in range(num_columns):
 					physical_page = Page()
 					physical_page.open(self.read_page(path, physical_page_number))
 					new_logical_page.pages.append(physical_page)
 			else:
-#				print('CREATE NEW PAGE')
-				# page not in 
+				# pages not in database (new pages)
 				new_logical_page.pages = [Page(dirty=True) for i in range(num_columns)]
 
-			self.logical_pages[bufferpool_index] = new_logical_page
-			self.logical_pages_directory[path] = bufferpool_index
+			self.logical_pages[bufferpool_index] = new_logical_page	# Put page in bufferpool
+			self.logical_pages_directory[path] = bufferpool_index	# Set index
 
 			if atomic:
+				# Only need once, no need to pin!
 				self.logical_pages[bufferpool_index].pinned = 0
 
 				if set_to is not None:
 					if set_and_get:
 						return self.logical_pages[bufferpool_index].pages[column].get_and_set(rec_num, set_to)
+
 					self.logical_pages[bufferpool_index].pages[column].set(rec_num, set_to)
 					return
-				return self.logical_pages[bufferpool_index].pages[column].get(rec_num)
-			return self.logical_pages[bufferpool_index]
-		except ValueError as e:
-			print(e)
 
-	def unpin_all(self):
-		pass
+				return self.logical_pages[bufferpool_index].pages[column].get(rec_num)
+
+			# Reader/writer wants to hold the bufferpool page
+			return self.logical_pages[bufferpool_index]
+		except Exception as e:
+			print(e)
+			return None # this will crash the program
+
+	"""
+	Closing database, save all dirty pages
+	"""
 
 	def close(self):
 		for page in self.logical_pages:
 			if page is not None:
 				self.create_folder(page.path)
 				for physical_page_number in range(len(page.pages)):
-#					print(page.pages[physical_page_number])
 					if page.pages[physical_page_number].dirty:
-						page.pages[physical_page_number].close()
-						self.write_page(page.path, physical_page_number, page.pages[physical_page_number].data)
+						page.pages[physical_page_number].close() # Save the page
+
+						self.write_page(
+							page.path,
+							physical_page_number,
+							page.pages[physical_page_number].data
+						)
 
 
 shared = Bufferpool()
