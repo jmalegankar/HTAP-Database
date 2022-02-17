@@ -445,6 +445,66 @@ class TestDatabase(unittest.TestCase):
 		self.assertTrue(query.sql('DELETE 1'))
 		self.assertEqual(len(query.sql('SELECT * WHERE 0=1')), 0)
 
+	def test_index(self):
+		db = Database()
+
+		table = db.create_table('Test1', 3, 0)
+		table2 = db.create_table('Test2', 3, 0)
+		table3 = db.create_table('Test3', 3, 0)
+		query = Query(table)
+		query2 = Query(table2)
+		query3 = Query(table3)
+		
+		table3.index.create_index(1)
+		
+		for i in range(-500, 500):
+			self.assertTrue(query.insert(i, -1 * i, 2 * i))
+			self.assertTrue(query2.insert(i, -1 * i, 2 * i))
+			self.assertTrue(query3.insert(i, -1 * i, 2 * i))
+		
+		for i in range(-500, 500):
+			self.assertEqual(query.select(i, 0, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+			self.assertEqual(query2.select(i, 0, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+			self.assertEqual(query3.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+
+		for i in range(-50, 50):
+			self.assertEqual(query.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+			self.assertEqual(query2.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+		
+		table2.index.create_index(1)
+		
+		for i in range(-500, 500):
+			self.assertEqual(query2.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+		
+		db.close()
+		
+		del db, table, query
+		
+		db = Database()
+		db.open('./database')
+		table = db.get_table('Test1')
+		table2 = db.get_table('Test2')
+		table3 = db.get_table('Test3')
+		query = Query(table)
+		query2 = Query(table2)
+		query3 = Query(table3)
+		
+		for i in range(-500, 500):
+			self.assertEqual(query.select(i, 0, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+		
+		for i in range(-50, 50):
+			self.assertEqual(query.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+		
+		table.index.create_index(1)
+		
+		for i in range(-500, 500):
+			self.assertEqual(query.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+			self.assertEqual(query2.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+			self.assertEqual(query3.select(-1 * i, 1, [1, 1, 1])[0].columns, [i, -1 * i, 2 * i])
+		
+		db.close()
+		
+
 	def test_everything(self):
 		try:
 			shutil.rmtree('./test_everything')

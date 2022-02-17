@@ -111,19 +111,16 @@ class Query:
                 temp_query_columns = query_columns
                 temp_query_columns[index_column] = 1
                 
-                key_index = self.table.index.indices[self.table.key]
-                for primary_key in key_index:
-                    rid = key_index[primary_key]
-                    
+                for rid in self.table.index.indices[self.table.key].values():
                     page_range_number = get_page_range_number(rid)
-                    
+
                     data = self.table.page_ranges[page_range_number].get_withRID(
                         rid, temp_query_columns
                     )
-                    
+
                     if data[index_column] == index_value:
                         results.append(Record(rid, self.table.key, data))
-    
+
             return results
         except ValueError:
             return False

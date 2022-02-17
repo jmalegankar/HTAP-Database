@@ -5,15 +5,18 @@ other columns can be indexed through this object.
 Indices are usually B-Trees, but other data structures can be used as well.
 """
 from collections import defaultdict
+from lstore.parser import get_page_range_number
 
 class Index:
 
-    __slots__ = 'indices', 'indexed_columns', 'key'
+    __slots__ = 'indices', 'indexed_columns', 'key', 'num_columns', 'table'
 
     def __init__(self, table):
         self.indices = [None] *  table.num_columns
         self.indexed_columns = [0] * table.num_columns
         self.key = table.key
+        self.num_columns = table.num_columns
+        self.table = table
 
     """
     Set index given column #, value (key of the dict/tree), and rid (the value)
@@ -79,24 +82,48 @@ class Index:
     """
 
     def create_index(self, column_number):
-        if self.indexed_columns[column_number] == 1:
+        try:
+            if column_number < 0 or column_number >= self.num_columns:
+                # out of index
+                return False
+
+            if self.indexed_columns[column_number] == 1:
+                return False
+
+            if column_number == self.key:
+                # TODO: Use B tree
+                self.indices[column_number] = dict()
+            else:
+                # Use dict
+                self.indices[column_number] = defaultdict(set)
+                if self.indexed_columns[self.key] == 1:
+                    # Building index
+                    temp_query_columns = [0] * self.num_columns
+                    temp_query_columns[column_number] = 1
+
+                    for rid in self.indices[self.key].values():
+                        page_range_number = get_page_range_number(rid)
+                        
+                        value = self.table.page_ranges[page_range_number].get_withRID(
+                            rid, temp_query_columns
+                        )[column_number]
+
+                        self.indices[column_number][value].add(rid)
+            self.indexed_columns[column_number] = 1
+            return True
+        except Exception as e:
+            print(e)
             return False
-
-        if column_number == self.key:
-            # TODO: Use B tree
-            self.indices[column_number] = dict()
-        else:
-            # Use dict
-            self.indices[column_number] = defaultdict(set)
-
-        self.indexed_columns[column_number] = 1
-        return True
 
     """
     # optional: Drop index of specific column
     """
 
     def drop_index(self, column_number):
+        if column_number < 0 or column_number >= self.num_columns:
+            # out of index
+            return False
+
         if self.indexed_columns[column_number] == 0:
             return False
 
