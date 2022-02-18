@@ -11,9 +11,17 @@ class Index:
 
     __slots__ = 'indices', 'indexed_columns', 'key', 'num_columns', 'table'
 
-    def __init__(self, table):
-        self.indices = [None] *  table.num_columns
-        self.indexed_columns = [0] * table.num_columns
+    def __init__(self, table, indices = None, indexed_columns = None):
+        if indices is None:
+            self.indices = [None] *  table.num_columns
+        else:
+            self.indices = indices
+        
+        if indexed_columns is None:
+            self.indexed_columns = [0] * table.num_columns
+        else:
+            self.indexed_columns = indexed_columns
+
         self.key = table.key
         self.num_columns = table.num_columns
         self.table = table

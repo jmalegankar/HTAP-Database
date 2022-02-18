@@ -1,14 +1,16 @@
 import os
 from lstore.table import Table
 import lstore.bufferpool as bufferpool
+import lstore.merge_worker as merge_worker
 
 class Database():
 
-    __slots__ = ('tables', 'path')
+    __slots__ = ('tables', 'path', 'merge_worker')
 
     def __init__(self):
         bufferpool.shared.start()
         self.tables = {}
+        self.merge_worker = merge_worker.MergeWorker()
 
     # Not required for milestone1
     def open(self, path):
@@ -24,9 +26,12 @@ class Database():
         for table in self.tables.values():
             table.close()
 
+        self.merge_worker.queue.join()
+
         bufferpool.shared.write_metadata('database.db', (
             list(self.tables.keys())
         ))
+
 
     """
     # Creates a new table
@@ -38,7 +43,7 @@ class Database():
         if name in self.tables:
             return self.tables[name]
 
-        table = Table(name, num_columns, key_index, open_from_db)
+        table = Table(name, num_columns, key_index, open_from_db, self.merge_worker)
         self.tables[name] = table
 
         bufferpool.shared.create_folder(name)

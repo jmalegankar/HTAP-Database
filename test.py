@@ -15,9 +15,8 @@ query = Query(grades_table)
 #query.insert(1, 2, 3, 4, 5)
 #query.insert(5, 4, 3, 2, 1)
 print(query.select(1, 0, [0, 0, 0, 0, 1]))
-print('\n')
-query.update(1, None, -1, None, -2, None)
-print('\n')
-print(query.select(1, 0, [0, 0, 0, 0, 1]))
+
+db.merge_worker.queue.put(([1], [2]))
+db.merge_worker.queue.put(([10], [20]))
 
 db.close()

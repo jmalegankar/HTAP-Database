@@ -10,7 +10,8 @@ SCHEMA_ENCODING_COLUMN = 3
 
 class Table:
     
-    __slots__ = 'page_ranges', 'name', 'records_per_range', 'num_columns', 'key', 'index', 'page_range_number'
+    __slots__ = ('page_ranges', 'name', 'records_per_range', 'num_columns', 'key',
+        'index', 'page_range_number', 'merge_worker')
 
     """
     :param name: string         #Table name
@@ -18,15 +19,16 @@ class Table:
     :param key: int             #Index of table key in columns
     """
 
-    def __init__(self, name, num_columns, key, open_from_db=False):
+    def __init__(self, name, num_columns, key, open_from_db=False, merge_worker=None):
         self.page_ranges = []
         self.name = name
 
         # PAGE_RANGE_SIZE base pages, each 511 records is the max
         self.records_per_range = PAGE_RANGE_SIZE * 511
-
+        
+        self.merge_worker = merge_worker
         if open_from_db and self.open():
-            self.index.create_index(self.key)
+            pass
         else:
             self.key = key
             self.num_columns = num_columns
@@ -53,7 +55,12 @@ class Table:
     def create_a_new_page_range(self):
         assert self.page_range_number < 99
         self.page_range_number += 1
-        self.page_ranges.append(PageRange(self.name, self.num_columns, self.page_range_number))
+        self.page_ranges.append(PageRange(
+            self.name,
+            self.num_columns,
+            self.page_range_number,
+            merge_worker=self.merge_worker
+        ))
 
     def is_page_range_full(self):
         if self.page_range_number == -1:
@@ -74,9 +81,15 @@ class Table:
             self.page_range_number = data[2]
 
             for page_range in range(self.page_range_number + 1):
-                self.page_ranges.append(PageRange(self.name, self.num_columns, page_range, True))
+                self.page_ranges.append(PageRange(
+                    self.name,
+                    self.num_columns,
+                    page_range,
+                    True,
+                    merge_worker=self.merge_worker
+                ))
 
-            self.index = data_index
+            self.index = Index(self, data_index[0], data_index[1])
             return True
 
         return False
@@ -88,7 +101,7 @@ class Table:
             self.page_range_number,
         ))
 
-        bufferpool.shared.write_metadata(self.name + '.index', self.index)
+        bufferpool.shared.write_metadata(self.name + '.index', (self.index.indices, self.index.indexed_columns))
 
         for page_range in self.page_ranges:
             page_range.close()

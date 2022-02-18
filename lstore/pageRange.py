@@ -2,15 +2,16 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
+import lstore.merge_worker as merge_worker
 from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
 
 class PageRange:
 
     __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
-        'range_number', 'base_page_number', 'tail_page_number', 'page_range_path', 'num_records', 'num_updates'
-    )
+        'range_number', 'base_page_number', 'tail_page_number', 'page_range_path',
+        'num_records', 'num_updates', 'merge_worker')
 
-    def __init__(self, table_name, columns, range_number, open_from_db=False):
+    def __init__(self, table_name, columns, range_number, open_from_db=False, merge_worker=None):
         self.num_of_columns = columns
         self.arr_of_base_pages=[]
         self.arr_of_tail_pages=[]
@@ -28,6 +29,8 @@ class PageRange:
 
         if open_from_db:
             self.open()
+
+        self.merge_worker = merge_worker
 
     """
     Debug Only
@@ -270,8 +273,9 @@ class PageRange:
         ))
 
     # Merge each base page
-    def merge(self, base_page_number):
-        pass
+    def merge(self, page_number):
+        if 0 <= page_number <= self.base_page_number:
+            pass
 
     """
     # Merge page range
