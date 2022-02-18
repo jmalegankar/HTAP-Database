@@ -587,7 +587,7 @@ class BPlusTree(object):
     """
     root: Node
 
-    def __init__(self, maximum=512):
+    def __init__(self, maximum=5):
         self.root = Leaf()
         self.maximum: int = maximum if maximum > 2 else 2
         self.minimum: int = self.maximum // 2
@@ -725,20 +725,61 @@ class BPlusTree(object):
             node = node.values[0]
         return node
 
+    def tree_search_for_query(self, key, node):
+        if node.is_leaf:
+            return node
+        else:
+            if key <= node.keys[0]:
+                return self.tree_search_for_query(key, Node(node.children[0]))
+            for i in range(len(node.keys) - 1):
+                if key > node.keys[i] and key <= node.keys[i + 1]:
+                    return self.tree_search_for_query(key, Node(node.children[i + 1]))
+            if key > node.keys[-1]:
+                return self.tree_search_for_query(key, Node(node.children[-1]))
+
+    def range_query(self, keyMin, keyMax)->values:
+        all_keys = []
+        all_values = []
+        start_leaf = self.tree_search_for_query(keyMin, self.root)
+        keys, values, next_node = self.get_data_in_key_range(keyMin, keyMax, start_leaf)
+        all_keys += keys
+        all_values += values
+        while next_node:
+            keys, values, next_node = self.get_data_in_key_range(keyMin, keyMax, Node(next_node.filename))
+            all_keys += keys
+            all_values += values
+        return all_keys, all_values
+
+    def get_data_in_key_range(self, keyMin, keyMax, node):
+        keys = []
+        values = []
+        for i in range(len(node.keys)):
+            key = node.keys[i]
+            if keyMin <= key and key <= keyMax:
+                keys.append(key)
+                values.append(self.read_data_file(node.children[i]))
+        if node.keys[-1] > keyMax:
+            next_node = None
+        else:
+            if node.next:
+                next_node = Node(node.next)
+            else:
+                next_node = None
+        return keys, values, next_node
 
 def demo():
     bplustree = BPlusTree()
-    random_list = random.sample(range(1, 10000), 2050)
+    random_list = random.sample(range(1, 7), 6)
     for i in random_list:
         bplustree[i] = 'test' + str(i)
         print('Insert ' + str(i))
         bplustree.show()
 
     random.shuffle(random_list)
-    for i in random_list:
-        print('Delete ' + str(i))
-        bplustree.delete(i)
-        bplustree.show()
+    # for i in random_list:
+    #     print('Delete ' + str(i))
+    #     bplustree.delete(i)
+    #     bplustree.show()
 
 
 if __name__ == '__main__':
