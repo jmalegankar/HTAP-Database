@@ -16,7 +16,7 @@ class BasePage:
 	"""
 
 	__slots__ = ('num_columns', 'num_user_columns', 'path', 'num_records', 'tps', 'num_updates',
-		'num_meta_columns')
+		'num_meta_columns', 'merging')
 
 	def __init__(self, columns: int, path: str, num_records=0, tps=-1, num_updates=0):
 		assert columns > 0
@@ -32,6 +32,7 @@ class BasePage:
 		self.tps = tps # Tail-Page Sequence Number
 		self.num_updates = num_updates
 		self.num_meta_columns = 5 if tps == -1 else 4 # 5 is tail, 4 is base
+		self.merging = False
 
 	"""
 	Debug Only

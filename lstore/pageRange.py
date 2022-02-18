@@ -2,7 +2,6 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
-import lstore.merge_worker as merge_worker
 from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
 
 class PageRange:
@@ -219,7 +218,8 @@ class PageRange:
 
         # Merge each base page only
         if (self.arr_of_base_pages[page_number].num_records >= 511 and 
-            self.arr_of_base_pages[page_number].num_updates >= MERGE_BASE_AFTER):
+            self.arr_of_base_pages[page_number].num_updates >= MERGE_BASE_AFTER and
+            not self.arr_of_base_pages[page_number].merging):
             # start merging
             self.merge(page_number)
         else:
@@ -275,7 +275,12 @@ class PageRange:
     # Merge each base page
     def merge(self, page_number):
         if 0 <= page_number <= self.base_page_number:
-            pass
+            self.arr_of_base_pages[page_number].num_updates = 0
+            self.arr_of_base_pages[page_number].merging = True
+
+            self.merge_worker.queue.put(
+                (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
+            )
 
     """
     # Merge page range

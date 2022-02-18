@@ -1,6 +1,8 @@
 from threading import Thread, Lock
 import lstore.bufferpool as bufferpool
 from queue import Queue
+import time
+import copy
  
 class MergeWorkerThread(Thread):
 
@@ -15,9 +17,69 @@ class MergeWorkerThread(Thread):
 
     def run(self):
         while True:
-            base_page, arr_of_tail_pages = self.queue.get() # block and wait
-            print(base_page)
-            print(arr_of_tail_pages)
+            logical_base_page, arr_of_tail_pages = self.queue.get() # block and wait
+            print('merge starting...')
+            base_tps = logical_base_page.tps
+            base_path = logical_base_page.path
+            num_columns = logical_base_page.num_columns
+            arr_of_tail_pages = copy.deepcopy(arr_of_tail_pages)
+
+            # array of physical pages
+            base_pages = bufferpool.shared.merge_get_logical_pages(base_path, num_columns)
+
+            if base_pages is None:
+                # bufferpool doesn't have the page, something is wrong
+                print('bufferpool doesnt have base page for merge')
+                logical_base_page.merging = False
+                self.queue.task_done()
+                continue
+
+            merged_base_pages = copy.deepcopy(base_pages)
+            del base_pages
+
+            logical_tail_pages = [
+                bufferpool.shared.merge_get_logical_pages(tail_page.path, tail_page.num_columns)
+                for tail_page in arr_of_tail_pages
+            ]
+
+            start_rid, end_rid = merged_base_pages[1].get(0), merged_base_pages[1].get(510)
+
+            latest_tps = 0
+            finished_merging = False
+            merged_base_rid = set()
+            merged_records = 0
+
+            page_number = len(arr_of_tail_pages) - 1 
+            for tail_page in reversed(logical_tail_pages):
+                # from arr_of_tail_pages[page_number].num_records - 1 to 0
+                for i in range(arr_of_tail_pages[page_number].num_records - 1 , -1, -1):
+                    tail_rid = logical_tail_pages[page_number][1].get(i)
+                    base_rid = logical_tail_pages[page_number][4].get(i)
+
+                    if latest_tps == 0:
+                        latest_tps = tail_rid
+
+                    if tail_rid <= base_tps:
+                        # finished merging
+                        finished_merging = True
+                        break
+                    
+                    if start_rid <= base_rid <= end_rid and base_rid not in merged_base_rid:
+                        # merge this page
+                        print(base_rid)
+                        merged_records += 1
+                        merged_base_rid.add(base_rid)
+
+                if finished_merging:
+                    # finished merging
+                    break
+                    
+            
+            if logical_base_page.tps < latest_tps:
+                logical_base_page.tps = latest_tps
+                print('merged', merged_records)
+
+            logical_base_page.merging = False
             self.queue.task_done()
 
 class MergeWorker:
@@ -27,3 +89,4 @@ class MergeWorker:
         self.thread = MergeWorkerThread(self.lock, self.queue)
         self.thread.daemon = True
         self.thread.start()
+        

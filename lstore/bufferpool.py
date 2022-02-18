@@ -90,10 +90,33 @@ class Bufferpool:
 		return None
 
 	"""
+	Get logical pages for our merge thread
+	"""
+
+	def merge_get_logical_pages(self, path, num_columns): # -> [Page]
+		if path in self.logical_pages_directory:
+			return self.logical_pages[self.logical_pages_directory[path]].pages
+		else:
+			# pages in database
+			try:
+				pages = []
+				if os.path.isdir(self.path + '/' + path):
+					for physical_page_number in range(num_columns):
+						physical_page = Page()
+						physical_page.open(self.read_page(path, physical_page_number))
+						pages.append(physical_page)
+					return pages
+				else:
+					return []
+			except Exception as e:
+				print(e)
+				return []
+
+	"""
 	Given path, return BufferpoolPage
 	"""
 
-	def get_logical_pages(self, path, num_columns, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False):
+	def get_logical_pages(self, path, num_columns, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False): # -> BufferpoolPage
 		try:
 			if path in self.logical_pages_directory:
 				# Cache hit, already in bufferpool
@@ -134,10 +157,6 @@ class Bufferpool:
 				if not has_free_space:
 					print('ERROR: We are kicking out a pinned page!')
 
-				# kick out this logical page
-				if oldest_page.path in self.logical_pages_directory:
-					del self.logical_pages_directory[oldest_page.path]
-
 				self.create_folder(oldest_page.path)
 
 				# write to disk if dirty
@@ -145,6 +164,10 @@ class Bufferpool:
 					if oldest_page.pages[physical_page_number].dirty:
 						oldest_page.pages[physical_page_number].close()
 						self.write_page(oldest_page.path, physical_page_number, oldest_page.pages[physical_page_number].data)
+
+				# kick out this logical page
+				if oldest_page.path in self.logical_pages_directory:
+					del self.logical_pages_directory[oldest_page.path]
 
 				# we have free space now
 				bufferpool_index = oldest_page_index
