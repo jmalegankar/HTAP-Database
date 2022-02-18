@@ -60,16 +60,16 @@ class Bufferpool:
 	"""
 
 	def write_page(self, relative_path, physical_page_number, data):
-		with open(self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db', 'wb', pickle.HIGHEST_PROTOCOL) as out_f:
-			pickle.dump(data, out_f)
+		with open(self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db', 'wb') as out_f:
+			out_f.write(data)
 
 	"""
 	Read a physical page from disk
 	"""
 
 	def read_page(self, relative_path, physical_page_number):
-		with open(self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db', 'rb', pickle.HIGHEST_PROTOCOL) as in_f:
-			return pickle.load(in_f)
+		with open(self.path + '/' + relative_path + '/' + str(physical_page_number) + '.db', 'rb') as in_f:
+			return bytearray(in_f.read())
 		return None
 
 	"""

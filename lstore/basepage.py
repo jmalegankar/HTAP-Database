@@ -14,9 +14,9 @@ class BasePage:
 	The rest are the columns provided by the user
 	"""
 
-	__slots__ = 'num_columns', 'num_user_columns', 'path', 'num_records', 'tps'
+	__slots__ = 'num_columns', 'num_user_columns', 'path', 'num_records', 'tps', 'num_updates'
 
-	def __init__(self, columns: int, path: str, num_records=0, tps=-1):
+	def __init__(self, columns: int, path: str, num_records=0, tps=-1, num_updates=0):
 		assert columns > 0
 		
 		self.num_columns = columns + 4 # Total number of columns (including internal columns)
@@ -24,6 +24,7 @@ class BasePage:
 		self.path = path # The location of this page in disk
 		self.num_records = num_records # Number of records
 		self.tps = tps # Tail-Page Sequence Number, < 0 means this page is a tail page
+		self.num_updates = num_updates
 
 	"""
 	Debug Only

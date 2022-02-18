@@ -2,12 +2,13 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
-from lstore.config import PAGE_RANGE_SIZE
+from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
 
 class PageRange:
 
     __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
-        'range_number', 'base_page_number', 'tail_page_number', 'page_range_path', 'num_records')
+        'range_number', 'base_page_number', 'tail_page_number', 'page_range_path', 'num_records', 'num_updates'
+    )
 
     def __init__(self, table_name, columns, range_number, open_from_db=False):
         self.num_of_columns = columns
@@ -16,8 +17,11 @@ class PageRange:
         self.range_number = range_number
         self.base_page_number = -1
         self.tail_page_number = -1
+
         self.page_range_path = table_name + '/page_range_' + str(range_number)
+
         self.num_records = 0
+        self.num_updates = 0 # If we decided to merge each page range
 
         bufferpool.shared.create_folder(self.page_range_path + '_b')
         bufferpool.shared.create_folder(self.page_range_path + '_t')
@@ -215,6 +219,23 @@ class PageRange:
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
 
+        # Merge each base page only
+        if (self.arr_of_base_pages[page_number].num_records >= 511 and 
+            self.arr_of_base_pages[page_number].num_updates >= MERGE_BASE_AFTER):
+            # start merging
+            self.merge(page_number)
+        else:
+            self.arr_of_base_pages[page_number].num_updates += 1
+
+
+        """
+        # Merge page range
+        if self.num_updates >= MERGE_BASE_AFTER:
+            self.merge()
+        else:
+            self.num_updates += 1
+        """
+
     def open(self):
         data = bufferpool.shared.read_metadata(self.page_range_path + '.metadata')
         if data is not None:
@@ -228,7 +249,8 @@ class PageRange:
                         self.num_of_columns,
                         self.page_range_path + '_b/base_' + str(page_number),
                         page_data[0],   # num_records
-                        page_data[1]    # tps
+                        page_data[1],   # tps
+                        page_data[2],   # num_updates, merge each base page
                 ))
 
             for page_number, num_records in enumerate(data[5]):
@@ -238,13 +260,26 @@ class PageRange:
                     num_records
                 ))
 
+#           self.num_updates = data[6] # Merge page range
+
     def close(self):
         bufferpool.shared.write_metadata(self.page_range_path + '.metadata', (
             self.num_of_columns,
             self.base_page_number,
             self.tail_page_number,
             self.num_records,
-            [(base_page.num_records, base_page.tps) for base_page in self.arr_of_base_pages],
+            [(base_page.num_records, base_page.tps, base_page.num_updates) for base_page in self.arr_of_base_pages],
             [tail_page.num_records for tail_page in self.arr_of_tail_pages]
+
+#           self.num_updates # Merge page range
         ))
-        
+
+    # Merge each base page
+    def merge(self, base_page_number):
+        pass
+
+    """
+    # Merge page range
+    def merge(self):
+        pass
+    """
