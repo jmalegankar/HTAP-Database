@@ -90,7 +90,9 @@ class PageRange:
             self.base_page_number += 1
             self.arr_of_base_pages.append(BasePage(
                 self.num_of_columns,
-                self.page_range_path + '_b/base_' + str(self.base_page_number)
+                self.page_range_path + '_b/base_' + str(self.base_page_number),
+                0,
+                0
             ))
 
     """
@@ -134,7 +136,8 @@ class PageRange:
 
             base_record = self.arr_of_base_pages[page_number].get_cols(offset, Q_col)
 
-            if indirection == 0:
+            if indirection == 0 or indirection <= self.arr_of_base_pages[page_number].tps:
+                # No tail update or no tail update after merged
                 return base_record
 
             base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
@@ -171,22 +174,14 @@ class PageRange:
 
     def delete_withRID(self, rid):
         base_page_number, base_offset = get_page_number_and_offset(rid)
-
         # set indir to 200000000
-        indirection = self.arr_of_base_pages[base_page_number].get_and_set(base_offset, 200000000, 0)
+        indirection = self.arr_of_base_pages[base_page_number].set(base_offset, 200000000, 0)
 
-        while indirection != 200000000:
-            if get_page_type(indirection) == 1:
-                tail_page_number, tail_offset = get_page_number_and_offset(indirection)
-                indirection = self.arr_of_tail_pages[tail_page_number].get_and_set(tail_offset, 200000000, 0)
-            else:
-                break
+    """
+    Adds a tail page, return the tail id of the new page
+    Needs a base RID to update and columns of data.
+    """
 
-
-    # adds a tail page, return the tail id of the new page
-    # needs a base RID to update and columns of data.
-    # columns =[1,43,None,34]
-    # None for not wanting to update
     def update(self, base_rid, *columns):
         assert len(columns) == self.num_of_columns
 
@@ -212,7 +207,7 @@ class PageRange:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].update(base_rid, record)
         else:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
-                self.get_tail_withRID(previous_tail_rid), record
+                base_rid, self.get_tail_withRID(previous_tail_rid), record
             )
 
         # set base record indirection to new tail page rid

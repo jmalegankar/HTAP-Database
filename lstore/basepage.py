@@ -11,20 +11,27 @@ class BasePage:
 	second page is for rid col
 	third page is for timestamp col
 	fourth page is for schema col
+	* for Tail, fifth page is for BaseRID col *
 	The rest are the columns provided by the user
 	"""
 
-	__slots__ = 'num_columns', 'num_user_columns', 'path', 'num_records', 'tps', 'num_updates'
+	__slots__ = ('num_columns', 'num_user_columns', 'path', 'num_records', 'tps', 'num_updates',
+		'num_meta_columns')
 
 	def __init__(self, columns: int, path: str, num_records=0, tps=-1, num_updates=0):
 		assert columns > 0
-		
-		self.num_columns = columns + 4 # Total number of columns (including internal columns)
+
+		if tps == -1:
+			self.num_columns = columns + 5 # Total number of columns (including internal columns)
+		else:
+			self.num_columns = columns + 4
+
 		self.num_user_columns = columns
 		self.path = path # The location of this page in disk
 		self.num_records = num_records # Number of records
-		self.tps = tps # Tail-Page Sequence Number, < 0 means this page is a tail page
+		self.tps = tps # Tail-Page Sequence Number
 		self.num_updates = num_updates
+		self.num_meta_columns = 5 if tps == -1 else 4 # 5 is tail, 4 is base
 
 	"""
 	Debug Only
@@ -76,13 +83,13 @@ class BasePage:
 
 	def get_cols(self, rec_num, columns):
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
-		result = [None if v == 0 else phys_pages.pages[4 + i].get(rec_num) for i, v in enumerate(columns)]
+		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return result
 
 	def get_user_cols(self, rec_num):
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
-		result =  [phys_pages.pages[4 + i].get(rec_num) for i in range(self.num_user_columns)]
+		result =  [phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i in range(self.num_user_columns)]
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return result
 
@@ -138,16 +145,18 @@ class BasePage:
 		for idx in range(self.num_user_columns):
 			if record.columns[idx] is not None:
 				schema = (schema | (1 << self.num_user_columns-(idx+1)))
-				phys_pages.pages[idx + 4].write(record.columns[idx])
+				phys_pages.pages[idx + 5].write(record.columns[idx])
 			else:
-				phys_pages.pages[idx + 4].write(0)
+				phys_pages.pages[idx + 5].write(0)
 
 		phys_pages.pages[3].write(schema)
+		phys_pages.pages[4].write(base_rid)
+
 		self.num_records += 1
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return schema
 
-	def tail_update(self, previous_data, record: Record):
+	def tail_update(self, base_rid, previous_data, record: Record):
 		assert len(record.columns) == self.num_user_columns
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
@@ -160,11 +169,12 @@ class BasePage:
 		for index in range(self.num_user_columns):
 			if record.columns[index] is not None:
 				schema = (schema | (1 << self.num_user_columns - (index + 1)))
-				phys_pages.pages[index + 4].write(record.columns[index])
+				phys_pages.pages[index + 5].write(record.columns[index])
 			else:
-				phys_pages.pages[index + 4].write(previous_data[index + 4])
+				phys_pages.pages[index + 5].write(previous_data[index + 5])
 
 		phys_pages.pages[3].write(schema)
+		phys_pages.pages[4].write(base_rid)
 		self.num_records += 1
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return schema
