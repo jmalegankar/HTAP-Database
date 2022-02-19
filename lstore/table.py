@@ -89,7 +89,7 @@ class Table:
                     merge_worker=self.merge_worker
                 ))
 
-            self.index = Index(self, data_index[0], data_index[1])
+            self.index = Index(self, data_index)
             return True
 
         return False
@@ -101,7 +101,7 @@ class Table:
             self.page_range_number,
         ))
 
-        bufferpool.shared.write_metadata(self.name + '.index', (self.index.indices, self.index.indexed_columns))
+        bufferpool.shared.write_metadata(self.name + '.index', (self.index.close()))
 
         for page_range in self.page_ranges:
             page_range.close()

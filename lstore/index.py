@@ -4,6 +4,7 @@ Key column should be indexd by default,
 other columns can be indexed through this object.
 Indices are usually B-Trees, but other data structures can be used as well.
 """
+from btree.b_tree import BPlusTree
 from collections import defaultdict
 from lstore.parser import get_page_range_number
 
@@ -11,20 +12,30 @@ class Index:
 
     __slots__ = 'indices', 'indexed_columns', 'key', 'num_columns', 'table'
 
-    def __init__(self, table, indices = None, indexed_columns = None):
-        if indices is None:
+    def __init__(self, table, data=None):
+        if data is None:
+            self.key = table.key
             self.indices = [None] *  table.num_columns
-        else:
-            self.indices = indices
-        
-        if indexed_columns is None:
             self.indexed_columns = [0] * table.num_columns
         else:
-            self.indexed_columns = indexed_columns
-
-        self.key = table.key
+            self.key = data[0]
+            self.indices = []
+            for i in range(len(data[1])):
+                if i == self.key:
+                    # rebuild
+                    index = BPlusTree()
+                    for key_value in data[1][i]:
+                        index[key_value[0]] = key_value[1]
+                    self.indices.append(index)
+                else:
+                    self.indices.append(data[1][i])
+            self.indexed_columns = data[2]
+    
         self.num_columns = table.num_columns
         self.table = table
+
+    def close(self):
+        return (self.key, [self.indices[i] if i != self.key else self.indices[i].list_all() for i in range(self.num_columns)], self.indexed_columns)
 
     """
     Set index given column #, value (key of the dict/tree), and rid (the value)
@@ -32,7 +43,6 @@ class Index:
 
     def set(self, column, value, rid):
         if column == self.key:
-            # TODO: Use B tree
             self.indices[column][value] = rid
         else:
             # Use dict
@@ -44,8 +54,7 @@ class Index:
 
     def locate(self, column, value):
         if column == self.key:
-            # TODO: Use B tree
-            return self.indices[column].get(value, None)
+            return self.indices[column].query(value)
         else:
             # Use dict
             return list(self.indices[column][value])
@@ -57,8 +66,7 @@ class Index:
     def remove(self, column, value, rid = None):
         try:
             if column == self.key:
-                # TODO: Use B tree
-                del self.indices[column][value]
+                self.indices[column].delete(value)
             else:
                 # Use dict
                 if rid is None:
@@ -78,12 +86,7 @@ class Index:
     """
 
     def locate_range(self, begin, end, column):
-        # TODO: Use B tree range given begin/end
-        rids = []
-        for key, rid in self.indices[self.key].items():
-            if begin <= key <= end:
-                rids.append(rid)
-        return rids
+        return self.indices[self.key].range_query(begin, end)[1]
 
     """
     # optional: Create index on specific column
@@ -99,8 +102,7 @@ class Index:
                 return False
 
             if column_number == self.key:
-                # TODO: Use B tree
-                self.indices[column_number] = dict()
+                self.indices[column_number] = BPlusTree()
             else:
                 # Use dict
                 self.indices[column_number] = defaultdict(set)
