@@ -1,7 +1,11 @@
 from lstore.db import Database
 from lstore.query import Query
-
+import shutil
 from random import choice, randint, sample, seed
+try:
+    shutil.rmtree('./ECS165')
+except:
+    pass
 
 db = Database()
 db.open('./ECS165')
@@ -56,9 +60,11 @@ for _ in range(number_of_updates):
             updated_columns[i] = value
             # copy record to check
             original = records[key].copy()
+            
             # update our test directory
             records[key][i] = value
-            query.update(key, *updated_columns)
+            if not query.update(key, *updated_columns):
+                print('updated failed!!!!\n\n\n')
             record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
             error = False
             for j, column in enumerate(record.columns):
@@ -66,9 +72,9 @@ for _ in range(number_of_updates):
                     error = True
             if error:
                 print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
+                input()
             else:
                 pass
-                # print('update on', original, 'and', updated_columns, ':', record)
             updated_columns[i] = None
 print("Update finished")
 
@@ -82,4 +88,5 @@ for i in range(0, number_of_aggregates):
         pass
         # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 print("Aggregate finished")
+print(query.select(92106438, 0, [1,1,1,1,1]))
 db.close()

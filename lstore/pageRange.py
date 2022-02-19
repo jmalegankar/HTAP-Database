@@ -2,6 +2,7 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
+import copy
 from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
 
 class PageRange:
@@ -124,7 +125,7 @@ class PageRange:
     Get a record given page_number and offset
     """
 
-    def get(self, page_number, offset, Q_col=None, isTail=False):
+    def get(self, page_number, offset, Q_col=None, isTail=False, rid=None):
         if isTail:
             if Q_col is None:
                 return self.arr_of_tail_pages[page_number].get_user_cols(offset)
@@ -140,14 +141,17 @@ class PageRange:
 
             if indirection == 0 or indirection <= self.arr_of_base_pages[page_number].tps:
                 # No tail update or no tail update after merged
+#               if indirection <= self.arr_of_base_pages[page_number].tps:
+#                   print('shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
                 return base_record
 
-            base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
+#           base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
+            tail_schema = self.arr_of_tail_pages[tail_page_number].get(tail_offset, 3)
             updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
 
             for index in range(self.num_of_columns):
-                if (base_schema & (1 << (self.num_of_columns - index - 1)) and
+                if (tail_schema & (1 << (self.num_of_columns - index - 1)) and
                     (Q_col is None or Q_col[index] == 1)):
                     base_record[index] = updated_record[index]
             return base_record
@@ -159,7 +163,7 @@ class PageRange:
 
     def get_withRID(self, rid, Q_col=None, isTail=False):
         page_number, offset = get_page_number_and_offset(rid)
-        return self.get(page_number, offset, Q_col, isTail)
+        return self.get(page_number, offset, Q_col, isTail, rid)
 
     """
     Get a tail record given RID
@@ -214,16 +218,15 @@ class PageRange:
 
         # set base record indirection to new tail page rid
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
-        self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
+        self.arr_of_base_pages[page_number].set(offset, 0, 3)
 
+        self.arr_of_base_pages[page_number].num_updates += 1
         # Merge each base page only
         if (self.arr_of_base_pages[page_number].num_records >= 511 and 
             self.arr_of_base_pages[page_number].num_updates >= MERGE_BASE_AFTER and
             not self.arr_of_base_pages[page_number].merging):
             # start merging
             self.merge(page_number)
-        else:
-            self.arr_of_base_pages[page_number].num_updates += 1
 
 
         """
@@ -277,10 +280,12 @@ class PageRange:
         if 0 <= page_number <= self.base_page_number:
             self.arr_of_base_pages[page_number].num_updates = 0
             self.arr_of_base_pages[page_number].merging = True
-
             self.merge_worker.queue.put(
-                (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
+                (self.arr_of_base_pages[page_number], copy.deepcopy(self.arr_of_tail_pages))
             )
+#           self.merge_worker.queue.put(
+#               (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
+#           )
 
     """
     # Merge page range

@@ -6,17 +6,22 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.page import Page
 from lstore.parser import *
+import threading
 
 db = Database()
 db.open('./test')
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 
-#query.insert(1, 2, 3, 4, 5)
-#query.insert(5, 4, 3, 2, 1)
-print(query.select(1, 0, [0, 0, 0, 0, 1]))
+print('thread C', threading.get_ident())
 
-db.merge_worker.queue.put(([1], [2]))
-db.merge_worker.queue.put(([10], [20]))
+for i in range(511):
+	query.insert(i, i*2, i*3, i*4, i*5)
+
+#query.update(1, None, -2, None, -4, None)
+
+for i in range(511):
+	if not query.update(i, None, -2*i, None, -4*i, None):
+		print('error')
 
 db.close()

@@ -134,6 +134,7 @@ class BasePage:
 	# used to update meaning making a new tail record
 
 	def update(self, base_rid, record: Record):
+#		print('update to', self.path)
 		assert len(record.columns) == self.num_user_columns
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
@@ -158,6 +159,7 @@ class BasePage:
 		return schema
 
 	def tail_update(self, base_rid, previous_data, record: Record):
+#		print('update to', self.path)
 		assert len(record.columns) == self.num_user_columns
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
