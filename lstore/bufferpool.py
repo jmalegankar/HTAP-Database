@@ -14,19 +14,21 @@ class BufferpoolPage:
 		self.pinned = 1
 		self.pages = []
 
-		"""
+		
 		# IF LRU
 		self.last_access = time.time()
-		"""
+		
 		
 		"""
 		# IF LFU
 		self.access_count = 1
 		"""
 
+		"""
 		# IF LFU and LRU
 		self.access_count = 1
 		self.last_access = time.time()
+		"""
 
 		self.path = path
 
@@ -147,19 +149,21 @@ class Bufferpool:
 				# Cache hit, already in bufferpool
 				bufferpool_page = self.logical_pages[self.logical_pages_directory[path]]
 
-				"""
+				
 				# IF LRU
 				bufferpool_page.last_access = time.time()
-				"""
+				
 
 				"""
 				# IF LRU
 				bufferpool_page.access_count += 1
 				"""
 
+				"""
 				# IF LFU and LRU
 				bufferpool_page.access_count += 1
 				bufferpool_page.last_access = time.time()
+				"""
 
 				if atomic:
 					# Only need once, no need to pin!
@@ -189,12 +193,12 @@ class Bufferpool:
 					if logical_page.pinned <= 0: # not pinned
 						has_free_space = True
 
-						"""
+						
 						# IF LRU
 						if logical_page.last_access < oldest_page.last_access:
 							oldest_page_index = index
 							oldest_page = logical_page
-						"""
+						
 
 						"""
 						# IF LFU
@@ -203,6 +207,7 @@ class Bufferpool:
 							oldest_page = logical_page
 						"""
 
+						"""
 						# IF LFU and LRU
 						if (logical_page.access_count < oldest_page.access_count):
 							oldest_page_index = index
@@ -210,6 +215,7 @@ class Bufferpool:
 						elif (logical_page.access_count == oldest_page.access_count and logical_page.last_access < oldest_page.last_access):
 							oldest_page_index = index
 							oldest_page = logical_page
+						"""
 				
 				if not has_free_space:
 					print('ERROR: We are kicking out a pinned page!')
