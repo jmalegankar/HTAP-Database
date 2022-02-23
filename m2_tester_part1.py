@@ -1,6 +1,7 @@
 from lstore.db import Database
 from lstore.query import Query
 import shutil
+import time
 from random import choice, randint, sample, seed
 try:
     shutil.rmtree('./ECS165')
@@ -89,4 +90,21 @@ for i in range(0, number_of_aggregates):
         # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 print("Aggregate finished")
 print(query.select(92106438, 0, [1,1,1,1,1]))
+
+grades_table._Table__merge()
+time.sleep(10)
+start = time.process_time()
+for key in keys:
+    record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
+    error = False
+    for i, column in enumerate(record.columns):
+        if column != records[key][i]:
+            error = True
+    if error:
+        print('select error on', key, ':', record, ', correct:', records[key])
+    else:
+        pass
+end = time.process_time()
+
+print('select took', end - start, 'seconds')
 db.close()

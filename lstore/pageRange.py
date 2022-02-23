@@ -65,7 +65,7 @@ class PageRange:
     """
 
     def pageRange_has_capacity(self):
-        return len(self.arr_of_base_pages) < PAGE_RANGE_SIZE
+        return self.base_page_number + 1 < PAGE_RANGE_SIZE
 
     def is_page_full(self, page_number, isTail=False):
         if page_number == -1:
@@ -142,9 +142,10 @@ class PageRange:
             if indirection == 0 or indirection <= self.arr_of_base_pages[page_number].tps:
                 # No tail update or no tail update after merged
 #               if indirection <= self.arr_of_base_pages[page_number].tps:
-#                   print('shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
+#               print('shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
                 return base_record
 
+#           print('no shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
 #           base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
             tail_schema = self.arr_of_tail_pages[tail_page_number].get(tail_offset, 3)
@@ -218,7 +219,7 @@ class PageRange:
 
         # set base record indirection to new tail page rid
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
-        self.arr_of_base_pages[page_number].set(offset, 0, 3)
+        self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
 
         self.arr_of_base_pages[page_number].num_updates += 1
         # Merge each base page only
@@ -286,9 +287,3 @@ class PageRange:
 #           self.merge_worker.queue.put(
 #               (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
 #           )
-
-    """
-    # Merge page range
-    def merge(self):
-        pass
-    """

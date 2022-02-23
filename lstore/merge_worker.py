@@ -77,7 +77,6 @@ class MergeWorkerThread(Thread):
                         offset = get_physical_page_offset(base_rid)
                         indirection = merged_base_pages[0].get(offset)
                         if indirection != 200000000:
-                            merged_base_pages[3].set(offset, 0)
                             for j in range(num_user_columns):
                                 if (schema & (1 << (num_user_columns - j - 1))):
                                     merged_base_pages[j + 4].set(
