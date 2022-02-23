@@ -1,6 +1,6 @@
 from lstore.db import Database
 from lstore.query import Query
-
+import time
 from random import choice, randint, sample, seed
 
 db = Database()
@@ -24,6 +24,7 @@ for i in range(0, number_of_records):
     key = 92106429 + i
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
 
+start = time.process_time()
 # Simulate updates
 keys = sorted(list(records.keys()))
 for _ in range(number_of_updates):
@@ -53,9 +54,11 @@ for i in range(0, number_of_aggregates):
         print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
 print("Aggregate finished")
 
-deleted_keys = sample(keys, 100)
-for key in deleted_keys:
-    query.delete(key)
-    records.pop(key, None)
+#deleted_keys = sample(keys, 100)
+#for key in deleted_keys:
+#   query.delete(key)
+#   records.pop(key, None)
 
+end = time.process_time()
+print('select took', end - start, 'seconds')
 db.close()
