@@ -277,5 +277,5 @@ class PageRange:
             self.arr_of_base_pages[page_number].num_updates = 0
             self.arr_of_base_pages[page_number].merging = True
             self.merge_worker.queue.put(
-                (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
+                (self.arr_of_base_pages[page_number], copy.deepcopy(self.arr_of_tail_pages))
             )

@@ -35,10 +35,9 @@ class MergeWorkerThread(Thread):
             merged_base_pages = copy.deepcopy(base_pages)
             del base_pages
 
-            num_tail_pages = len(arr_of_tail_pages)
             logical_tail_pages = [
                 bufferpool.shared.merge_get_logical_pages(tail_page.path, tail_page.num_columns)
-                for tail_page in arr_of_tail_pages[:num_tail_pages]
+                for tail_page in arr_of_tail_pages
             ]
 
             start_rid, end_rid = merged_base_pages[1].get(0), merged_base_pages[1].get(510)
@@ -48,8 +47,8 @@ class MergeWorkerThread(Thread):
             merged_base_rid = set()
             merged_records = 0
 
-            page_number = num_tail_pages - 1 
-            for tail_page in reversed(logical_tail_pages[:num_tail_pages]):
+            page_number = len(arr_of_tail_pages) - 1 
+            for tail_page in reversed(logical_tail_pages):
                 # from arr_of_tail_pages[page_number].num_records - 1 to 0
                 for i in range(arr_of_tail_pages[page_number].num_records - 1 , -1, -1):
                     tail_rid = tail_page[1].get(i)
