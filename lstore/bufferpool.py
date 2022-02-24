@@ -12,24 +12,8 @@ class BufferpoolPage:
 
 	def __init__(self, path):
 		self.pinned = 1
-		self.pages = []
-
-		
-		# IF LRU
+		self.pages = [] # contains an array of physical page
 		self.last_access = time.time()
-		
-		
-		"""
-		# IF LFU
-		self.access_count = 1
-		"""
-
-		"""
-		# IF LFU and LRU
-		self.access_count = 1
-		self.last_access = time.time()
-		"""
-
 		self.path = path
 
 
@@ -49,7 +33,7 @@ class Bufferpool:
 		self.logical_pages = [None] * BUFFERPOOL_SIZE # array of BufferpoolPage
 		self.bufferpool_size = 0
 		self.logical_pages_directory = dict() # map logical base/tail pages to index
-		self.merge_lock = Lock()
+		self.merge_lock = Lock() # when we update our page directory after merge
 
 	"""
 	Set the database path
@@ -108,7 +92,7 @@ class Bufferpool:
 		return None
 
 	"""
-	Get logical pages for our merge thread
+	Get logical pages for our merge thread to read, won't affect bufferpool
 	"""
 
 	def merge_get_logical_pages(self, path, num_columns, is_base=False): # -> [Page]
@@ -126,48 +110,39 @@ class Bufferpool:
 					return pages
 				else:
 					return []
-			except Exception as e:
-				print(e)
+			except:
 				return []
 
+	"""
+	Replace our old base page with merged base page
+	"""
+
 	def merge_save_logical_pages(self, path, num_columns, pages):
-		self.merge_lock.acquire()
+		self.merge_lock.acquire() # to prevent logical_pages_directory update
+
 		# save pages
 		if path in self.logical_pages_directory:
 			bufferpool_page = self.logical_pages[self.logical_pages_directory[path]]
-			for i in range(4, num_columns):
+			for i in range(4, num_columns): # starting from 4 because we don't change the first 4
 				bufferpool_page.pages[i] = pages[i]
 		else:
 			for i in range(4, num_columns):
 				pages[i].close()
 				self.write_page(path, i, pages[i].data)
 		self.merge_lock.release()
+
 	"""
 	Given path, return BufferpoolPage
 	"""
 
 	def get_logical_pages(self, path, num_columns, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False): # -> BufferpoolPage
-		self.merge_lock.acquire()
+		self.merge_lock.acquire() # here we might update our page directory so we need a lock
+
 		try:
 			if path in self.logical_pages_directory:
 				# Cache hit, already in bufferpool
 				bufferpool_page = self.logical_pages[self.logical_pages_directory[path]]
-
-				
-				# IF LRU
 				bufferpool_page.last_access = time.time()
-				
-
-				"""
-				# IF LRU
-				bufferpool_page.access_count += 1
-				"""
-
-				"""
-				# IF LFU and LRU
-				bufferpool_page.access_count += 1
-				bufferpool_page.last_access = time.time()
-				"""
 
 				if atomic:
 					# Only need once, no need to pin!
@@ -188,7 +163,6 @@ class Bufferpool:
 			# Page not in bufferpool
 			bufferpool_index = self.bufferpool_size
 			if bufferpool_index == BUFFERPOOL_SIZE: # if bufferpool doesnt have free space anymore
-#				print('need to kick')
 				oldest_page = self.logical_pages[0]
 				oldest_page_index = 0
 				has_free_space = False
@@ -197,42 +171,12 @@ class Bufferpool:
 					if logical_page.pinned <= 0: # not pinned
 						has_free_space = True
 
-						
-						# IF LRU
+						# Using LRU, find a page to evict
 						if logical_page.last_access < oldest_page.last_access:
 							oldest_page_index = index
 							oldest_page = logical_page
-						
 
-						"""
-						# IF LFU
-						if (logical_page.access_count < oldest_page.access_count):
-							oldest_page_index = index
-							oldest_page = logical_page
-						"""
-
-						"""
-						# IF LFU and LRU
-						if (logical_page.access_count < oldest_page.access_count):
-							oldest_page_index = index
-							oldest_page = logical_page
-						elif (logical_page.access_count == oldest_page.access_count and logical_page.last_access < oldest_page.last_access):
-							oldest_page_index = index
-							oldest_page = logical_page
-						"""
-							
-						"""
-						# IF LFU and LRU hybrid
-						if (time.time() - logical_page.last_access > 61) :
-							oldest_page_index = index
-							oldest_page = logical_page
-							break
-						elif (logical_page.access_count < oldest_page.access_count):
-							oldest_page_index = index
-							oldest_page = logical_page
-						"""
-				
-				if not has_free_space:
+				if not has_free_space: # error if we fail to evict any page
 					print('ERROR: We are kicking out a pinned page!')
 
 				self.create_folder(oldest_page.path)
@@ -240,8 +184,12 @@ class Bufferpool:
 				# write to disk if dirty
 				for physical_page_number in range(len(oldest_page.pages)):
 					if oldest_page.pages[physical_page_number].dirty:
-						oldest_page.pages[physical_page_number].close()
-						self.write_page(oldest_page.path, physical_page_number, oldest_page.pages[physical_page_number].data)
+						oldest_page.pages[physical_page_number].close() # close physical page
+						self.write_page(
+							oldest_page.path,
+							physical_page_number,
+							oldest_page.pages[physical_page_number].data
+						)
 
 				# kick out this logical page
 				if oldest_page.path in self.logical_pages_directory:
@@ -284,9 +232,10 @@ class Bufferpool:
 
 			# Reader/writer wants to hold the bufferpool page
 			return self.logical_pages[bufferpool_index]
-		except KeyError as e:
+		except:
 			return None # this will crash the program
 		finally:
+			# release lock if we finished using everything
 			self.merge_lock.release()
 
 	"""

@@ -1,11 +1,10 @@
 from lstore.db import Database
 from lstore.query import Query
-from time import process_time, sleep
+from time import process_time
 from random import choice, randrange
 
 # Student Id and 4 grades
 db = Database()
-db.open('./test-database')
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 keys = []
@@ -17,13 +16,6 @@ for i in range(0, 10000):
 insert_time_1 = process_time()
 
 print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
-
-# Measuring Select Performance
-select_time_0 = process_time()
-for i in range(0, 10000):
-    query.select(choice(keys),0 , [1, 1, 1, 1, 1])
-select_time_1 = process_time()
-print("Selecting before update 10k records took:  \t\t\t", select_time_1 - select_time_0)
 
 # Measuring update Performance
 update_cols = [
@@ -45,17 +37,7 @@ select_time_0 = process_time()
 for i in range(0, 10000):
     query.select(choice(keys),0 , [1, 1, 1, 1, 1])
 select_time_1 = process_time()
-print("Selecting again before update 10k records took:  \t\t\t", select_time_1 - select_time_0)
-
-grades_table._Table__merge()
-sleep(3)
-
-# Measuring Select Performance
-select_time_0 = process_time()
-for i in range(0, 10000):
-    query.select(choice(keys),0 , [1, 1, 1, 1, 1])
-select_time_1 = process_time()
-print("Selecting after update 10k records took:  \t\t\t", select_time_1 - select_time_0)
+print("Selecting 10k records took:  \t\t\t", select_time_1 - select_time_0)
 
 # Measuring Aggregate Performance
 agg_time_0 = process_time()
@@ -72,4 +54,3 @@ for i in range(0, 10000):
     query.delete(906659671 + i)
 delete_time_1 = process_time()
 print("Deleting 10k records took:  \t\t\t", delete_time_1 - delete_time_0)
-db.close()

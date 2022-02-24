@@ -18,20 +18,16 @@ class MergeWorkerThread(Thread):
     def run(self):
         while True:
             logical_base_page, arr_of_tail_pages = self.queue.get() # block and wait
-#           print('merging', logical_base_page.path)
-#           print('merge starting...')
             base_tps = logical_base_page.tps
             base_path = logical_base_page.path
             num_columns = logical_base_page.num_columns
             num_user_columns = logical_base_page.num_user_columns
-#           arr_of_tail_pages = copy.deepcopy(arr_of_tail_pages)
 
             # array of physical pages
             base_pages = bufferpool.shared.merge_get_logical_pages(base_path, num_columns, True)
 
             if base_pages is None:
                 # bufferpool doesn't have the page, something is wrong
-                print('bufferpool doesnt have base page for merge')
                 logical_base_page.merging = False
                 self.queue.task_done()
                 continue
@@ -66,10 +62,6 @@ class MergeWorkerThread(Thread):
                         # finished merging
                         finished_merging = True
                         break
-#                   if base_path == 'Grades/page_range_0_b/base_0':
-#                       print(logical_tail_pages)
-#                       input()
-#                       print(base_rid)
 
                     if start_rid <= base_rid <= end_rid and base_rid not in merged_base_rid:
                         # merge this page
@@ -92,8 +84,6 @@ class MergeWorkerThread(Thread):
 
             if merged_records > 0:
                 # need to save the pages
-#               print('merged', merged_records)
-#               print(latest_tps)
                 bufferpool.shared.merge_save_logical_pages(logical_base_page.path, num_columns, merged_base_pages)
 
             if logical_base_page.tps < latest_tps:
@@ -102,10 +92,10 @@ class MergeWorkerThread(Thread):
             logical_base_page.merging = False
             self.queue.task_done()
 
+
 class MergeWorker:
     def __init__(self):
         self.queue = Queue()
         self.thread = MergeWorkerThread(self.queue)
         self.thread.daemon = True
         self.thread.start()
-        

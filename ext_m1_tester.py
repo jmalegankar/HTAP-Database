@@ -1,11 +1,9 @@
 from lstore.db import Database
 from lstore.query import Query
-from time import process_time
 
 from random import choice, randint, sample, seed
 
 db = Database()
-db.open('test2')
 # Create a table  with 5 columns
 #   Student Id and 4 grades
 #   The first argument is name of the table
@@ -23,8 +21,6 @@ records = {}
 number_of_records = 10000
 number_of_aggregates = 100
 seed(3589901)
-
-start = process_time()
 
 for i in range(0, number_of_records):
     key = 92106429 + randint(0, number_of_records)
@@ -85,8 +81,6 @@ for key in records:
             pass
             # print('update on', original, 'and', updated_columns, ':', record)
         updated_columns[i] = None
-end = process_time()
-print(end - start)
 
 keys = sorted(list(records.keys()))
 # aggregate on every column
@@ -103,4 +97,3 @@ for c in range(0, grades_table.num_columns):
         else:
             pass
             # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
-db.close()

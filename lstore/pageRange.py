@@ -141,11 +141,7 @@ class PageRange:
 
             if indirection == 0 or indirection <= self.arr_of_base_pages[page_number].tps:
                 # No tail update or no tail update after merged
-#               if indirection <= self.arr_of_base_pages[page_number].tps:
-#               print('shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
                 return base_record
-
-#           print('no shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
 
             # check do we need to visit tail or not
             base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
@@ -158,7 +154,6 @@ class PageRange:
 
                 if skip_tail:
                     return base_record
-
 
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
             tail_schema = self.arr_of_tail_pages[tail_page_number].get(tail_offset, 3)
@@ -242,15 +237,6 @@ class PageRange:
             # start merging
             self.merge(page_number)
 
-
-        """
-        # Merge page range
-        if self.num_updates >= MERGE_BASE_AFTER:
-            self.merge()
-        else:
-            self.num_updates += 1
-        """
-
     def open(self):
         data = bufferpool.shared.read_metadata(self.page_range_path + '.metadata')
         if data is not None:
@@ -275,8 +261,6 @@ class PageRange:
                     num_records
                 ))
 
-#           self.num_updates = data[6] # Merge page range
-
     def close(self):
         bufferpool.shared.write_metadata(self.page_range_path + '.metadata', (
             self.num_of_columns,
@@ -285,8 +269,6 @@ class PageRange:
             self.num_records,
             [(base_page.num_records, base_page.tps, base_page.num_updates) for base_page in self.arr_of_base_pages],
             [tail_page.num_records for tail_page in self.arr_of_tail_pages]
-
-#           self.num_updates # Merge page range
         ))
 
     # Merge each base page
@@ -297,7 +279,3 @@ class PageRange:
             self.merge_worker.queue.put(
                 (self.arr_of_base_pages[page_number], copy.deepcopy(self.arr_of_tail_pages))
             )
-#           self.merge_worker.queue.put(
-#               (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
-#           )
-            

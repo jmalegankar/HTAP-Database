@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from __future__ import annotations
 from collections import deque
 import random
 
@@ -281,7 +280,7 @@ class BPlusTree(object):
             self.__setitem__(key, value, leaf)
             return True, leaf
         
-    def insert_index(self, key, values: list[Node]):
+    def insert_index(self, key, values):
         """For a parent and child node,
                     Insert the values from the child into the values of the parent."""
         parent = values[1].parent

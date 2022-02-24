@@ -1,12 +1,7 @@
 from lstore.db import Database
 from lstore.query import Query
-import shutil
-import time
+
 from random import choice, randint, sample, seed
-try:
-    shutil.rmtree('./ECS165')
-except:
-    pass
 
 db = Database()
 db.open('./ECS165')
@@ -24,7 +19,7 @@ query = Query(grades_table)
 # dictionary for records to test the database: test directory
 records = {}
 
-number_of_records = 10000
+number_of_records = 1000
 number_of_aggregates = 100
 number_of_updates = 10
 
@@ -61,11 +56,9 @@ for _ in range(number_of_updates):
             updated_columns[i] = value
             # copy record to check
             original = records[key].copy()
-            
             # update our test directory
             records[key][i] = value
-            if not query.update(key, *updated_columns):
-                print('updated failed!!!!\n\n\n')
+            query.update(key, *updated_columns)
             record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
             error = False
             for j, column in enumerate(record.columns):
@@ -73,9 +66,9 @@ for _ in range(number_of_updates):
                     error = True
             if error:
                 print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
-                input()
             else:
                 pass
+                # print('update on', original, 'and', updated_columns, ':', record)
             updated_columns[i] = None
 print("Update finished")
 
@@ -89,22 +82,4 @@ for i in range(0, number_of_aggregates):
         pass
         # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 print("Aggregate finished")
-print(query.select(92106438, 0, [1,1,1,1,1]))
-
-grades_table._Table__merge()
-time.sleep(10)
-start = time.process_time()
-for key in keys:
-    record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
-    error = False
-    for i, column in enumerate(record.columns):
-        if column != records[key][i]:
-            error = True
-    if error:
-        print('select error on', key, ':', record, ', correct:', records[key])
-    else:
-        pass
-end = time.process_time()
-
-print('select took', end - start, 'seconds')
 db.close()

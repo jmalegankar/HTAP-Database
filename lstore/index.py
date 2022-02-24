@@ -140,4 +140,3 @@ class Index:
         self.indices[column_number] = None
         self.indexed_columns[column_number] = 0
         return True
-    

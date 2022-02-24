@@ -63,4 +63,3 @@ class Database():
         if name in self.tables:
             return self.tables[name]
         return None
-    

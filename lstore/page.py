@@ -63,4 +63,3 @@ class Page:
     def open(self, data):
         self.data = data
         self.num_records = int.from_bytes(data[4088 : 4090], 'big', signed=False)
-        

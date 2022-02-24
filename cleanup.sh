@@ -5,3 +5,5 @@ rm -rf test2
 rm -rf test_everything
 rm -rf query_insert_select
 rm -rf test-database
+rm -rf speed_test
+rm -rf speed_test2
