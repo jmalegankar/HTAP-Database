@@ -1,4 +1,4 @@
-from threading import Thread, Lock
+from threading import Thread
 import lstore.bufferpool as bufferpool
 from queue import Queue
 import time
@@ -7,9 +7,8 @@ from lstore.parser import get_physical_page_offset
  
 class MergeWorkerThread(Thread):
 
-    def __init__(self, lock, queue):
+    def __init__(self, queue):
         Thread.__init__(self)
-        self.lock = lock
         self.queue = queue
 
     """
@@ -106,8 +105,7 @@ class MergeWorkerThread(Thread):
 class MergeWorker:
     def __init__(self):
         self.queue = Queue()
-        self.lock = Lock()
-        self.thread = MergeWorkerThread(self.lock, self.queue)
+        self.thread = MergeWorkerThread(self.queue)
         self.thread.daemon = True
         self.thread.start()
         

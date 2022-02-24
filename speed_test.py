@@ -1,6 +1,6 @@
 from lstore.db import Database
 from lstore.query import Query
-from time import process_time
+from time import process_time, sleep
 import sys
 import random
 import shutil
@@ -249,6 +249,67 @@ def sum_test():
 	query = Query(table)
 	query.sum(0, 100000000, random.randint(0, 4))
 
+def select_merge_setup():
+	random.seed(1234567890)
+	try:
+		shutil.rmtree('./speed_test')
+	except:
+		pass
+	db = Database()
+	db.open('./speed_test')
+	table = db.create_table('test', 5, 0)
+	
+	query = Query(table)
+	keys = random.sample(range(-100000000, 100000001), 10000)
+	
+	records = []
+	
+	for key in keys:
+		record = [key, random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000)]
+		records.append(record)
+		query.insert(*record)
+
+	random.shuffle(keys)
+	for key in keys:
+		cols = random.sample(range(1, 5), random.randint(1, 4))
+		update_cols = [None] * 5
+		for col in cols:
+			update_cols[col] = random.randint(-100000000, 100000000)
+			
+		if not query.update(key, *update_cols):
+			print('update error')
+	db.close()
+	random.seed(1234567890)
+
+def select_merge_test():
+	db = Database()
+	db.open('./speed_test')
+	table = db.get_table('test')
+	
+	query = Query(table)
+	keys = random.sample(range(-100000000, 100000001), 10000)
+	
+	for key in keys:
+		query.select(key, 0, [1,1,1,1,1])
+
+def select_merge_setup2():
+	random.seed(1234567890)
+	db = Database()
+	db.open('./speed_test')
+	table = db.get_table('test')
+	table._Table__merge()
+	sleep(3)
+	db.close()
+	
+def select_merge_test2():
+	db = Database()
+	db.open('./speed_test')
+	table = db.get_table('test')
+	
+	query = Query(table)
+	keys = random.sample(range(-100000000, 100000001), 10000)
+	for key in keys:
+		query.select(key, 0, [1,1,1,1,1])
 
 if __name__ == '__main__':
 	repeat = 5
@@ -280,7 +341,9 @@ if __name__ == '__main__':
 		('delete_select_test', 'update_test_setup'),
 		('delete_select_test', 'delete_select_test_setup'),
 		('sum_test', 'update_test_setup'),
-		('sum_test', 'sum_test_setup')
+		('sum_test', 'sum_test_setup'),
+		('select_merge_test', 'select_merge_setup'),
+		('select_merge_test2', 'select_merge_setup2')
 	]
 
 	for test in tests:

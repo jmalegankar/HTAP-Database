@@ -146,7 +146,20 @@ class PageRange:
                 return base_record
 
 #           print('no shortcut!', indirection, 'vs', self.arr_of_base_pages[page_number].tps, 'for', rid)
-#           base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
+
+            # check do we need to visit tail or not
+            base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
+            if Q_col is not None:
+                skip_tail = True
+                for index in range(self.num_of_columns):
+                    if (base_schema & (1 << (self.num_of_columns - index - 1)) and Q_col[index] == 1):
+                        skip_tail = False
+                        break
+
+                if skip_tail:
+                    return base_record
+
+
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
             tail_schema = self.arr_of_tail_pages[tail_page_number].get(tail_offset, 3)
             updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
@@ -287,3 +300,4 @@ class PageRange:
 #           self.merge_worker.queue.put(
 #               (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
 #           )
+            

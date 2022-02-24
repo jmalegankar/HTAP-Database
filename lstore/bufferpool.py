@@ -35,7 +35,7 @@ class BufferpoolPage:
 
 class Bufferpool:
 
-	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory')
+	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'merge_lock')
 
 	def __init__(self):
 		self.start()
@@ -49,6 +49,7 @@ class Bufferpool:
 		self.logical_pages = [None] * BUFFERPOOL_SIZE # array of BufferpoolPage
 		self.bufferpool_size = 0
 		self.logical_pages_directory = dict() # map logical base/tail pages to index
+		self.merge_lock = Lock()
 
 	"""
 	Set the database path
@@ -130,6 +131,7 @@ class Bufferpool:
 				return []
 
 	def merge_save_logical_pages(self, path, num_columns, pages):
+		self.merge_lock.acquire()
 		# save pages
 		if path in self.logical_pages_directory:
 			bufferpool_page = self.logical_pages[self.logical_pages_directory[path]]
@@ -139,11 +141,13 @@ class Bufferpool:
 			for i in range(4, num_columns):
 				pages[i].close()
 				self.write_page(path, i, pages[i].data)
+		self.merge_lock.release()
 	"""
 	Given path, return BufferpoolPage
 	"""
 
 	def get_logical_pages(self, path, num_columns, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False): # -> BufferpoolPage
+		self.merge_lock.acquire()
 		try:
 			if path in self.logical_pages_directory:
 				# Cache hit, already in bufferpool
@@ -216,6 +220,17 @@ class Bufferpool:
 							oldest_page_index = index
 							oldest_page = logical_page
 						"""
+							
+						"""
+						# IF LFU and LRU hybrid
+						if (time.time() - logical_page.last_access > 61) :
+							oldest_page_index = index
+							oldest_page = logical_page
+							break
+						elif (logical_page.access_count < oldest_page.access_count):
+							oldest_page_index = index
+							oldest_page = logical_page
+						"""
 				
 				if not has_free_space:
 					print('ERROR: We are kicking out a pinned page!')
@@ -270,9 +285,9 @@ class Bufferpool:
 			# Reader/writer wants to hold the bufferpool page
 			return self.logical_pages[bufferpool_index]
 		except KeyError as e:
-			print('xxx?')
-			print(e)
 			return None # this will crash the program
+		finally:
+			self.merge_lock.release()
 
 	"""
 	Closing database, save all dirty pages

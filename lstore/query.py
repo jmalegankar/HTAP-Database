@@ -263,4 +263,3 @@ class Query:
         except:
 
             return False
-        

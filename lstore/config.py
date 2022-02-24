@@ -6,4 +6,4 @@ BUFFERPOOL_SIZE = 32
 PAGE_RANGE_SIZE = 8
 
 # How many time we update a base page before we merge
-MERGE_BASE_AFTER = 511000000
+MERGE_BASE_AFTER = 511
