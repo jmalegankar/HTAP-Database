@@ -11,7 +11,7 @@ class ExtendedTester(unittest.TestCase):
 
 	def setUp(self):
 		seed = random.randrange(sys.maxsize)
-		random.seed(2315448978749341185)
+		random.seed(seed)
 		print(str(seed) + '\n')
 		try:
 			shutil.rmtree('./database')
