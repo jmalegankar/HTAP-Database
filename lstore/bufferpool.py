@@ -19,7 +19,7 @@ class BufferpoolPage:
 
 class Bufferpool:
 
-	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'merge_lock')
+	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'merge_lock','evict_lock')
 
 	def __init__(self):
 		self.start()
@@ -34,6 +34,7 @@ class Bufferpool:
 		self.bufferpool_size = 0
 		self.logical_pages_directory = dict() # map logical base/tail pages to index
 		self.merge_lock = Lock() # when we update our page directory after merge
+		self.evict_lock = Lock()
 
 	"""
 	Set the database path
@@ -97,14 +98,14 @@ class Bufferpool:
 
 	def merge_get_logical_pages(self, path, num_columns, is_base=False): # -> [Page]
 		if path in self.logical_pages_directory:
-			self.merge_lock.acquire()
+			self.evict_lock.acquire()
 			try:
 				return self.logical_pages[self.logical_pages_directory[path]].pages
 			except:
 				return[]
 			finally:
 			# release lock if we finished using everything
-				self.merge_lock.release()
+				self.evict_lock.release()
 		else:
 			# pages in database
 			try:
@@ -199,8 +200,11 @@ class Bufferpool:
 						)
 
 				# kick out this logical page
+				self.evict_lock.acquire()
 				if oldest_page.path in self.logical_pages_directory:
 					del self.logical_pages_directory[oldest_page.path]
+
+				self.evict_lock.release()
 
 				# we have free space now
 				bufferpool_index = oldest_page_index
