@@ -97,7 +97,14 @@ class Bufferpool:
 
 	def merge_get_logical_pages(self, path, num_columns, is_base=False): # -> [Page]
 		if path in self.logical_pages_directory:
-			return self.logical_pages[self.logical_pages_directory[path]].pages
+			self.merge_lock.acquire()
+			try:
+				return self.logical_pages[self.logical_pages_directory[path]].pages
+			except:
+				return[]
+			finally:
+			# release lock if we finished using everything
+				self.merge_lock.release()
 		else:
 			# pages in database
 			try:
