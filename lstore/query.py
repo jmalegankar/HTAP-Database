@@ -41,7 +41,7 @@ class Query:
             for col, value in enumerate(data):
                 if value is not None:
                     self.table.index.remove(col, value, rid)
-        except ValueError:
+        except:
             return False
         else:
             return True
@@ -69,7 +69,7 @@ class Query:
             for column_index in range(self.table.num_columns):
                 if self.table.index.indexed_columns[column_index] == 1:
                     self.table.index.set(column_index, columns[column_index], rid)
-        except ValueError:
+        except:
             return False
         else:
             return True
@@ -122,7 +122,7 @@ class Query:
                         results.append(Record(rid, self.table.key, data))
 
             return results
-        except ValueError:
+        except:
             return False
 
     """
@@ -152,7 +152,7 @@ class Query:
             for col, value in enumerate(columns):
                 if value is not None and self.table.index.indexed_columns[col] == 1:
                     self.table.index.replace(col, data[col], value, rid)
-        except ValueError:
+        except:
             return False
         else:
             return True

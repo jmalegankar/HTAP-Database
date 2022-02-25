@@ -237,7 +237,8 @@ def sum_test_setup():
 				
 			if not query.update(key, *update_cols):
 				print('update error')
-
+	table._Table__merge()
+	sleep(3)
 	db.close()
 	del db, table, query
 

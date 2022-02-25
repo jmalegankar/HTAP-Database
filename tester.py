@@ -637,7 +637,8 @@ class ExtendedTester(unittest.TestCase):
 
 
 if __name__ == '__main__':
-	repeat = 100
+	repeat = 10000
 	for i in range(repeat):
+		print('{} test'.format(i))
 		if not unittest.main(exit=False, verbosity=2).result.wasSuccessful():
 			exit(1)

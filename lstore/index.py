@@ -73,7 +73,7 @@ class Index:
                     self.indices[column][value] = set()
                 else:
                     self.indices[column][value].remove(rid)
-        except KeyError:
+        except:
             pass
 
 
@@ -121,8 +121,7 @@ class Index:
                         self.indices[column_number][value].add(rid)
             self.indexed_columns[column_number] = 1
             return True
-        except Exception as e:
-            print(e)
+        except:
             return False
 
     """
