@@ -64,38 +64,58 @@ class BasePage:
 	"""
 
 	def get(self, rec_num, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num)
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num)
 
 	"""
-	quicker setter to access page set
+	*** WARNING: CALLERS MUST UNPIN THE PAGE ***
+	Get a record given page offset and column number, return value and bufferpool object
+	"""
+
+	def get_bp(self, rec_num, column):
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		return phys_pages.pages[column].get(rec_num), phys_pages
+
+	"""
+	Quicker setter to access page set
 	"""
 
 	def set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num, value)
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num, value)
 
 	def get_and_set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, True, column, rec_num, value, True)
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num, value, True)
 
 	"""
-	Get multiple col
+	Get multiple columns
 	rec_num: record number in integer
 	ex: [0, 1, 1, 0] will get the second and third user columns
 	"""
 
 	def get_cols(self, rec_num, columns):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
 		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return result
 
+	"""
+	Get multiple columns and a column with bufferpool object
+	"""
+	
+	def get_cols_and_col(self, rec_num, columns, column):
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
+		additional = phys_pages.pages[column].get(rec_num)
+		phys_pages.pinned -= 1 # Finished using, unpin the page
+		return result, additional
+
 	def get_user_cols(self, rec_num):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
 		result =  [phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i in range(self.num_user_columns)]
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return result
 
 	def get_all_cols(self, rec_num):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
 		result =  [phys_pages.pages[i].get(rec_num) for i in range(self.num_columns)]
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		return result
@@ -114,7 +134,7 @@ class BasePage:
 		Need to update page directory and map primary key -> RID
 		"""
 
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
 		# Internal columns
 		phys_pages.pages[0].write(0) # indirection, default = ?
@@ -136,7 +156,7 @@ class BasePage:
 	def update(self, base_rid, record: Record):
 		assert len(record.columns) == self.num_user_columns
 
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
 		phys_pages.pages[0].write(base_rid)
 		phys_pages.pages[1].write(record.rid)
@@ -160,7 +180,7 @@ class BasePage:
 	def tail_update(self, base_rid, previous_data, record: Record):
 		assert len(record.columns) == self.num_user_columns
 
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
 		phys_pages.pages[0].write(previous_data[1]) # indirection is previous tail RID
 		phys_pages.pages[1].write(record.rid)

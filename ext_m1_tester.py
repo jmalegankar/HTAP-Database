@@ -1,5 +1,6 @@
 from lstore.db import Database
 from lstore.query import Query
+import lstore.bufferpool as bufferpool
 
 from random import choice, randint, sample, seed
 
@@ -56,7 +57,7 @@ for key in records:
         print('select error on', key, ':', record.columns, ', correct:', r)
     else:
         pass
-    
+print('Select finished')
 
 for key in records:
     updated_columns = [None, None, None, None, None, None, None]
@@ -81,11 +82,15 @@ for key in records:
             pass
             # print('update on', original, 'and', updated_columns, ':', record)
         updated_columns[i] = None
+print('Update finished')
 
 keys = sorted(list(records.keys()))
 # aggregate on every column
 for c in range(0, grades_table.num_columns):
     for i in range(0, number_of_aggregates):
+        print(c, i)
+        if c == 2 and i == 3:
+          print(bufferpool.shared.logical_pages)
         r = sorted(sample(range(0, len(keys)), 2))
         # calculate the sum form test directory
         column_sum = sum(

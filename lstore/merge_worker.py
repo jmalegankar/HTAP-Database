@@ -19,6 +19,7 @@ class MergeWorkerThread(Thread):
         while True:
             try:
                 logical_base_page, arr_of_tail_pages = self.queue.get() # block and wait
+                print('run!!!')
                 base_tps = logical_base_page.tps
                 base_path = logical_base_page.path
                 num_columns = logical_base_page.num_columns

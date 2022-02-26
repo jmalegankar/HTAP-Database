@@ -125,63 +125,66 @@ class PageRange:
     Get a record given page_number and offset
     """
 
-    def get(self, page_number, offset, Q_col=None, isTail=False, rid=None):
+    def get(self, page_number, offset, query_columns=None, isTail=False, rid=None):
         if isTail:
-            if Q_col is None:
+            # Getting a tail page
+            if query_columns is None:
+                # If we don't have query columns, then get all user columns,
                 return self.arr_of_tail_pages[page_number].get_user_cols(offset)
-            return self.arr_of_tail_pages[page_number].get_cols(offset, Q_col)
+
+            # Get the columns given query_columns
+            return self.arr_of_tail_pages[page_number].get_cols(offset, query_columns)
         else:
+            # Getting a base page
+            # First, get the indirection value
             indirection = self.arr_of_base_pages[page_number].get(offset, 0)
 
+            # Record not found if it is deleted
             if indirection == 200000000:
-                # we set indirection to 200000000 when we deleted the record
                 return None
 
-            base_record = self.arr_of_base_pages[page_number].get_cols(offset, Q_col)
+            tps = self.arr_of_base_pages[page_number].tps
+            # Read the base records given query_columns
+            base_record, base_schema = self.arr_of_base_pages[page_number].get_cols_and_col(
+                offset, query_columns, 3
+            )
 
-            if indirection == 0 or indirection <= self.arr_of_base_pages[page_number].tps:
-                # No tail update or no tail update after merged
+            # No tail update or no tail update after merged, base_record is up to date
+            if indirection == 0 or indirection <= tps:
                 return base_record
 
-            # check do we need to visit tail or not
-            base_schema = self.arr_of_base_pages[page_number].get(offset, 3)
-            if Q_col is not None:
+            # Check do we need to visit tail or not
+            if query_columns is not None:
                 skip_tail = True
                 for index in range(self.num_of_columns):
-                    if (base_schema & (1 << (self.num_of_columns - index - 1)) and Q_col[index] == 1):
+                    if (base_schema & (1 << (self.num_of_columns - index - 1)) and query_columns[index] == 1):
                         skip_tail = False
                         break
 
                 if skip_tail:
                     return base_record
 
+            # We have an update and not in the base page, need to visit last tail record
             tail_page_number, tail_offset = get_page_number_and_offset(indirection)
-            tail_schema = self.arr_of_tail_pages[tail_page_number].get(tail_offset, 3)
-            updated_record = self.arr_of_tail_pages[tail_page_number].get_cols(tail_offset, Q_col)
+
+            updated_record, tail_schema = self.arr_of_tail_pages[tail_page_number].get_cols_and_col(
+                tail_offset, query_columns, 3
+            )
 
             for index in range(self.num_of_columns):
                 if (tail_schema & (1 << (self.num_of_columns - index - 1)) and
-                    (Q_col is None or Q_col[index] == 1)):
+                    (query_columns is None or query_columns[index] == 1)):
                     base_record[index] = updated_record[index]
             return base_record
 
     """
     Get a record given RID
-    If query columns (Q_col) is None, return all
+    If query columns (query_columns) is None, return all
     """
 
-    def get_withRID(self, rid, Q_col=None, isTail=False):
+    def get_withRID(self, rid, query_columns=None, isTail=False):
         page_number, offset = get_page_number_and_offset(rid)
-        return self.get(page_number, offset, Q_col, isTail, rid)
-
-    """
-    Get a tail record given RID
-    return all columns (internal and user)
-    """
-
-    def get_tail_withRID(self, rid):
-        page_number, offset = get_page_number_and_offset(rid)
-        return self.arr_of_tail_pages[page_number].get_all_cols(offset)
+        return self.get(page_number, offset, query_columns, isTail, rid)
 
     """
     Delete a record given RID
@@ -189,7 +192,7 @@ class PageRange:
 
     def delete_withRID(self, rid):
         base_page_number, base_offset = get_page_number_and_offset(rid)
-        # set indir to 200000000
+        # Set indirection column value to 200000000
         indirection = self.arr_of_base_pages[base_page_number].set(base_offset, 200000000, 0)
 
     """
@@ -205,29 +208,38 @@ class PageRange:
 
         page_number, offset = get_page_number_and_offset(base_rid)
 
-        # indirection aka previous tail RID
-        previous_tail_rid = self.arr_of_base_pages[page_number].get(offset, 0)
+        # Get indirection column value aka previous tail RID
+        # NEED TO RETURN BUFFERPOOL PIN OBJECT (1)
+        previous_tail_rid, phys_pages = self.arr_of_base_pages[page_number].get_bp(offset, 0)
 
+        # Generate a new RID for the latest tail record
         new_tail_rid = create_rid(
             1,
             self.range_number,
             self.tail_page_number,
             self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()
-        ) # creates a tail_rid
+        )
 
+        # Generate a new record object given the RID
         record = Record(new_tail_rid, -1, columns)
-         # set the new tail record data
+
+        # Find the correct tail page and perform update
         new_schema = 0
         if previous_tail_rid == 0:
             new_schema = self.arr_of_tail_pages[self.tail_page_number].update(base_rid, record)
         else:
+            tail_page_number, tail_offset = get_page_number_and_offset(previous_tail_rid)
+            tails_data = self.arr_of_tail_pages[tail_page_number].get_all_cols(tail_offset)
             new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
-                base_rid, self.get_tail_withRID(previous_tail_rid), record
+                base_rid, tails_data, record
             )
 
-        # set base record indirection to new tail page rid
+        # Set base record indirection to new tail page rid and update the schema
         self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
         self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
+
+        # UNPIN HERE (1)
+        phys_pages.pinned -= 1
 
         self.arr_of_base_pages[page_number].num_updates += 1
         # Merge each base page only
@@ -273,6 +285,7 @@ class PageRange:
 
     # Merge each base page
     def merge(self, page_number):
+        return
         if 0 <= page_number <= self.base_page_number:
             self.arr_of_base_pages[page_number].num_updates = 0
             self.arr_of_base_pages[page_number].merging = True
