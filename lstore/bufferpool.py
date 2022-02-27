@@ -101,14 +101,11 @@ class Bufferpool:
 		return None
 
 	"""
-	Get logical pages for our merge thread to read, won't affect bufferpool
+	Get logical BASE pages for our merge thread to read, won't affect bufferpool
 	"""
 
-	def merge_get_logical_pages(self, path, num_columns, version=0): # -> [Page]
+	def merge_get_base_pages(self, path, num_columns, version=0): # -> [Page]
 #		print('merge_get_logical_pages', path, version)
-		if version < 0:
-			version = 0
-
 		in_bufferpool = False
 		pages = []
 
@@ -147,10 +144,38 @@ class Bufferpool:
 			return None
 
 	"""
+	Get logical TAIL pages for our merge thread to read, won't affect bufferpool
+	"""
+
+	def merge_get_tail_pages(self, path, num_columns): # -> [Page]
+		pages = []
+
+		self.directory_lock.acquire()
+
+		if path in self.logical_pages_directory:
+			index = self.logical_pages_directory[path]
+			pages = self.logical_pages[index].pages
+			self.directory_lock.release()
+			return pages
+
+		self.directory_lock.release()
+
+		try:
+			if os.path.isdir(self.path + '/' + path):
+				for physical_page_number in range(num_columns):
+					physical_page = Page()
+					physical_page.open(self.read_page(path, physical_page_number, 0))
+					pages.append(physical_page)
+				return pages
+			return None
+		except ValueError:
+			return None
+
+	"""
 	Replace our old base page with merged base page
 	"""
 
-	def merge_save_logical_pages(self, path, num_columns, pages, version):
+	def merge_save_base_pages(self, path, num_columns, pages, version):
 		# notify main thread we finished a merge
 		self.create_folder(path)
 

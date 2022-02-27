@@ -27,7 +27,10 @@ class MergeWorkerThread(Thread):
 #               print('merging', base_path, 'with current tps:', base_tps)
 
                 # Array of physical pages (Base [Page])
-                base_pages = bufferpool.shared.merge_get_logical_pages(base_path, num_columns, base_tps)
+                base_pages = bufferpool.shared.merge_get_base_pages(
+                    base_path, num_columns, base_tps
+                )
+
                 if base_pages is None:
                     print('Base_page invalid', base_path, base_tps)
                     # bufferpool doesn't have the page, something is wrong
@@ -36,7 +39,6 @@ class MergeWorkerThread(Thread):
 
                 # Make a deep copy of the [Page]
                 merged_base_pages = copy.deepcopy(base_pages)
-                del base_pages
                 last_page_range_number = get_page_range_number(base_tps)
                 arr_of_tail_pages = copy.deepcopy(arr_of_tail_pages)
                 tail_pages_len = len(arr_of_tail_pages)
@@ -44,7 +46,7 @@ class MergeWorkerThread(Thread):
                 # Array of array of physical pages [Tail [Page]]
                 logical_tail_pages = [
                     None if number < last_page_range_number else
-                    bufferpool.shared.merge_get_logical_pages(
+                    bufferpool.shared.merge_get_tail_pages(
                         arr_of_tail_pages[number].path, arr_of_tail_pages[number].num_columns
                     )
                     for number in range(tail_pages_len)
@@ -60,11 +62,12 @@ class MergeWorkerThread(Thread):
                 # From len(arr_of_tail_pages) - 1 to 0
                 for page_number in range(tail_pages_len - 1, last_page_range_number - 1, -1):
                     tail_page = logical_tail_pages[page_number]
+
                     # From tail_page.num_records - 1 to 0
-                    for i in range(arr_of_tail_pages[page_number].num_records - 1 , -1, -1):
+                    for i in range(arr_of_tail_pages[page_number].num_records - 1, -1, -1):
                         tail_rid = tail_page[1].get(i)
-                        base_rid = tail_page[4].get(i)
                         schema = tail_page[3].get(i)
+                        base_rid = tail_page[4].get(i)
 
                         if latest_tps == 0:
                             # Last record's TPS
@@ -95,9 +98,11 @@ class MergeWorkerThread(Thread):
 
                 if merged_records > 0:
                     # need to save the pages
-                    bufferpool.shared.merge_save_logical_pages(base_path, num_columns, merged_base_pages, latest_tps)
+                    bufferpool.shared.merge_save_base_pages(
+                        base_path, num_columns, merged_base_pages, latest_tps
+                    )
+
                     base_page_object.tps = latest_tps
-#                   print('Finished', base_path, 'latestTPS:',latest_tps)
 
                 self.queue.task_done()
             except ValueError as e:
@@ -112,4 +117,3 @@ class MergeWorker:
         self.thread = MergeWorkerThread(self.queue)
         self.thread.daemon = True
         self.thread.start()
-        
