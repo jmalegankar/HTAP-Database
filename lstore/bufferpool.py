@@ -10,12 +10,12 @@ class BufferpoolPage:
 
 	__slots__ = 'pinned', 'pages', 'last_access', 'access_count', 'path', 'version'
 
-	def __init__(self, path):
+	def __init__(self, path, version):
 		self.pinned = 1
 		self.pages = [] # contains an array of physical page
 		self.last_access = time.time()
 		self.path = path
-		self.version = 0
+		self.version = version
 
 	def __str__(self):
 		string = 'BufferpoolPage\n'
@@ -105,8 +105,12 @@ class Bufferpool:
 	"""
 
 	def merge_get_logical_pages(self, path, num_columns, version=0): # -> [Page]
+#		print('merge_get_logical_pages', path, version)
 		if version < 0:
 			version = 0
+
+		in_bufferpool = False
+		pages = []
 
 		self.directory_lock.acquire()
 
@@ -114,21 +118,32 @@ class Bufferpool:
 			index = self.logical_pages_directory[path]
 			if self.logical_pages[index].version == version:
 				pages = self.logical_pages[index].pages
-				self.evict_lock.release()
+				self.directory_lock.release()
 				return pages
+			else:
+				pages = self.logical_pages[index].pages[:4]
+				in_bufferpool = True
+#				print(path, 'is in bufferpool but not up to date!')
 
 		self.directory_lock.release()
 
 		try:
-			pages = []
 			if os.path.isdir(self.path + '/' + path):
 				for physical_page_number in range(num_columns):
-					physical_page = Page()
-					physical_page.open(self.read_page(path, physical_page_number, version))
-					pages.append(physical_page)
+					if physical_page_number < 4:
+						if in_bufferpool:
+							continue
+
+						physical_page = Page()
+						physical_page.open(self.read_page(path, physical_page_number, 0))
+						pages.append(physical_page)
+					else:
+						physical_page = Page()
+						physical_page.open(self.read_page(path, physical_page_number, version))
+						pages.append(physical_page)
 				return pages
 			return None
-		except:
+		except ValueError:
 			return None
 
 	"""
@@ -137,6 +152,8 @@ class Bufferpool:
 
 	def merge_save_logical_pages(self, path, num_columns, pages, version):
 		# notify main thread we finished a merge
+		self.create_folder(path)
+
 		for i in range(4, num_columns):
 			pages[i].close()
 			self.write_page(path, i, pages[i].data, version)
@@ -173,6 +190,7 @@ class Bufferpool:
 						bufferpool_page.pinned += 1
 					return bufferpool_page
 				else:
+#					print('PAGE OUT DATED!!!', path, 'need:', version, 'has', bufferpool_page.version)
 					# base page is outdated, save first 4 columns
 					for physical_page_number in range(4):
 						if bufferpool_page.pages[physical_page_number].dirty:
@@ -187,6 +205,7 @@ class Bufferpool:
 			if next_bufferpool_index == -1:
 				next_bufferpool_index = self.bufferpool_size
 				if next_bufferpool_index == BUFFERPOOL_SIZE: # if bufferpool doesnt have free space anymore
+#					print('need to kick for', path)
 					oldest_page = self.logical_pages[0]
 					oldest_page_index = 0
 					has_free_space = False
@@ -209,12 +228,12 @@ class Bufferpool:
 					for physical_page_number in range(len(oldest_page.pages)):
 						if oldest_page.pages[physical_page_number].dirty:
 							oldest_page.pages[physical_page_number].close() # close physical page
-							version = 0 if physical_page_number < 4 else oldest_page.version
+							read_version = 0 if physical_page_number < 4 else oldest_page.version
 							self.write_page(
 								oldest_page.path,
 								physical_page_number,
 								oldest_page.pages[physical_page_number].data,
-								version
+								read_version
 							)
 
 					# kick out this logical page
@@ -232,13 +251,18 @@ class Bufferpool:
 					self.bufferpool_size += 1
 
 			# Create a BufferpoolPage object
-			new_logical_page = BufferpoolPage(path)
+			new_logical_page = BufferpoolPage(path, version)
 
 			# pages in database
 			if os.path.isdir(self.path + '/' + path):
 				for physical_page_number in range(num_columns):
 					physical_page = Page()
-					physical_page.open(self.read_page(path, physical_page_number))
+
+					if physical_page_number < 4:
+						physical_page.open(self.read_page(path, physical_page_number, 0))
+					else:
+						physical_page.open(self.read_page(path, physical_page_number, version))
+
 					new_logical_page.pages.append(physical_page)
 			else:
 				# pages not in database (new pages)
@@ -262,7 +286,7 @@ class Bufferpool:
 
 			# Reader/writer wants to hold the bufferpool page
 			return self.logical_pages[next_bufferpool_index]
-		except:
+		except ValueError as e:
 			return None # this will crash the program
 
 	"""

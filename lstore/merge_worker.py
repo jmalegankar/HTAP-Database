@@ -3,7 +3,7 @@ import lstore.bufferpool as bufferpool
 from queue import Queue
 import time
 import copy
-from lstore.parser import get_physical_page_offset
+from lstore.parser import get_physical_page_offset, get_page_range_number
  
 class MergeWorkerThread(Thread):
 
@@ -18,53 +18,63 @@ class MergeWorkerThread(Thread):
     def run(self):
         while True:
             try:
-                logical_base_page, arr_of_tail_pages = self.queue.get() # block and wait
-                print('run!!!')
-                base_tps = logical_base_page.tps
-                base_path = logical_base_page.path
-                num_columns = logical_base_page.num_columns
-                num_user_columns = logical_base_page.num_user_columns
-                
-                # array of physical pages
-                base_pages = bufferpool.shared.merge_get_logical_pages(base_path, num_columns, True)
-                
+                base_page_object, arr_of_tail_pages = self.queue.get()
+
+                base_tps = base_page_object.tps
+                base_path = base_page_object.path
+                num_columns = base_page_object.num_columns
+                num_user_columns = base_page_object.num_user_columns
+#               print('merging', base_path, 'with current tps:', base_tps)
+
+                # Array of physical pages (Base [Page])
+                base_pages = bufferpool.shared.merge_get_logical_pages(base_path, num_columns, base_tps)
                 if base_pages is None:
+                    print('Base_page invalid', base_path, base_tps)
                     # bufferpool doesn't have the page, something is wrong
-                    logical_base_page.merging = False
                     self.queue.task_done()
                     continue
-                
+
+                # Make a deep copy of the [Page]
                 merged_base_pages = copy.deepcopy(base_pages)
                 del base_pages
-                
+                last_page_range_number = get_page_range_number(base_tps)
+                arr_of_tail_pages = copy.deepcopy(arr_of_tail_pages)
+                tail_pages_len = len(arr_of_tail_pages)
+
+                # Array of array of physical pages [Tail [Page]]
                 logical_tail_pages = [
-                    bufferpool.shared.merge_get_logical_pages(tail_page.path, tail_page.num_columns)
-                    for tail_page in arr_of_tail_pages
+                    None if number < last_page_range_number else
+                    bufferpool.shared.merge_get_logical_pages(
+                        arr_of_tail_pages[number].path, arr_of_tail_pages[number].num_columns
+                    )
+                    for number in range(tail_pages_len)
                 ]
-                
+
                 start_rid, end_rid = merged_base_pages[1].get(0), merged_base_pages[1].get(510)
-                
+
                 latest_tps = 0
                 finished_merging = False
                 merged_base_rid = set()
                 merged_records = 0
-                
-                page_number = len(arr_of_tail_pages) - 1 
-                for tail_page in reversed(logical_tail_pages):
-                    # from arr_of_tail_pages[page_number].num_records - 1 to 0
+
+                # From len(arr_of_tail_pages) - 1 to 0
+                for page_number in range(tail_pages_len - 1, last_page_range_number - 1, -1):
+                    tail_page = logical_tail_pages[page_number]
+                    # From tail_page.num_records - 1 to 0
                     for i in range(arr_of_tail_pages[page_number].num_records - 1 , -1, -1):
                         tail_rid = tail_page[1].get(i)
                         base_rid = tail_page[4].get(i)
                         schema = tail_page[3].get(i)
-                        
+
                         if latest_tps == 0:
+                            # Last record's TPS
                             latest_tps = tail_rid
-                            
+
                         if tail_rid <= base_tps:
                             # finished merging
                             finished_merging = True
                             break
-                        
+
                         if start_rid <= base_rid <= end_rid and base_rid not in merged_base_rid:
                             # merge this page
                             offset = get_physical_page_offset(base_rid)
@@ -75,27 +85,24 @@ class MergeWorkerThread(Thread):
                                         merged_base_pages[j + 4].set(
                                             offset, tail_page[j + 5].get(i)
                                         )
-                                        
+
                             merged_records += 1
                             merged_base_rid.add(base_rid)
-                            
-                    page_number -= 1
+
                     if finished_merging:
                         # finished merging
                         break
-                    
+
                 if merged_records > 0:
                     # need to save the pages
-                    bufferpool.shared.merge_save_logical_pages(logical_base_page.path, num_columns, merged_base_pages)
-                    
-                if logical_base_page.tps < latest_tps:
-                    logical_base_page.tps = latest_tps
-                    
-                logical_base_page.merging = False
+                    bufferpool.shared.merge_save_logical_pages(base_path, num_columns, merged_base_pages, latest_tps)
+                    base_page_object.tps = latest_tps
+#                   print('Finished', base_path, 'latestTPS:',latest_tps)
+
                 self.queue.task_done()
-            except:
+            except ValueError as e:
+                print(e)
                 # something is wrong
-                logical_base_page.merging = False
                 self.queue.task_done()
 
 
@@ -105,3 +112,4 @@ class MergeWorker:
         self.thread = MergeWorkerThread(self.queue)
         self.thread.daemon = True
         self.thread.start()
+        
