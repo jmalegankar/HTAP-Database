@@ -2,6 +2,7 @@ from lstore.index import Index
 from lstore.pageRange import PageRange
 from lstore.config import PAGE_RANGE_SIZE
 import lstore.bufferpool as bufferpool
+from threading import Lock
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
@@ -11,7 +12,7 @@ SCHEMA_ENCODING_COLUMN = 3
 class Table:
     
     __slots__ = ('page_ranges', 'name', 'records_per_range', 'num_columns', 'key',
-        'index', 'page_range_number', 'merge_worker')
+        'index', 'page_range_number', 'merge_worker', 'latch', 'index_latch')
 
     """
     :param name: string         #Table name
@@ -22,6 +23,8 @@ class Table:
     def __init__(self, name, num_columns, key, open_from_db=False, merge_worker=None):
         self.page_ranges = []
         self.name = name
+        self.latch = Lock()
+        self.index_latch = Lock()
 
         # PAGE_RANGE_SIZE base pages, each 511 records is the max
         self.records_per_range = PAGE_RANGE_SIZE * 511
@@ -65,12 +68,16 @@ class Table:
     def is_page_range_full(self):
         if self.page_range_number == -1:
             return True
+
         return self.page_ranges[self.page_range_number].num_records >= self.records_per_range
 
     def get_next_page_range_number(self):
+        self.latch.acquire()
         if self.is_page_range_full():
             self.create_a_new_page_range()
-        return self.page_range_number
+        prn = self.page_range_number
+        self.latch.release()
+        return prn
 
     def open(self):
         data = bufferpool.shared.read_metadata(self.name + '.metadata')

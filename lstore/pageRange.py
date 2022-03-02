@@ -3,13 +3,14 @@ from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
 import copy
+from threading import Lock
 from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
 
 class PageRange:
 
     __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
         'range_number', 'base_page_number', 'tail_page_number', 'page_range_path',
-        'num_records', 'num_updates', 'merge_worker')
+        'num_records', 'num_updates', 'merge_worker', 'latch')
 
     def __init__(self, table_name, columns, range_number, open_from_db=False, merge_worker=None):
         self.num_of_columns = columns
@@ -18,6 +19,7 @@ class PageRange:
         self.range_number = range_number
         self.base_page_number = -1
         self.tail_page_number = -1
+        self.latch = Lock()
 
         self.page_range_path = table_name + '/page_range_' + str(range_number)
 
@@ -76,6 +78,7 @@ class PageRange:
             return not self.arr_of_tail_pages[page_number].has_capacity()
         else:
             return not self.arr_of_base_pages[page_number].has_capacity()
+        
 
     """
     creates a base page or tail page
@@ -106,8 +109,10 @@ class PageRange:
     def write(self, *columns):
         assert len(columns) == self.num_of_columns
         # Data OK, create new RID for this record
+        self.latch.acquire()
         if self.is_page_full(self.base_page_number):
             self.create_a_new_page()
+        self.latch.release()
 
         rid = create_rid(
             0,
@@ -203,8 +208,10 @@ class PageRange:
     def update(self, base_rid, *columns):
         assert len(columns) == self.num_of_columns
 
+        self.latch.acquire()
         if self.is_page_full(self.tail_page_number, True):
             self.create_a_new_page(True)
+        self.latch.release()
 
         page_number, offset = get_page_number_and_offset(base_rid)
 
