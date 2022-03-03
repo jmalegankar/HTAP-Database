@@ -1,7 +1,11 @@
 from lstore.db import Database
 from lstore.query import Query
+import lstore.bufferpool as bufferpool
+import time
 
 from random import choice, randint, sample, seed
+
+start = time.process_time()
 
 db = Database()
 # Create a table  with 5 columns
@@ -56,7 +60,7 @@ for key in records:
         print('select error on', key, ':', record.columns, ', correct:', r)
     else:
         pass
-    
+print('Select finished')
 
 for key in records:
     updated_columns = [None, None, None, None, None, None, None]
@@ -81,11 +85,16 @@ for key in records:
             pass
             # print('update on', original, 'and', updated_columns, ':', record)
         updated_columns[i] = None
+print('Update finished')
+
+#grades_table._Table__merge()
+#time.sleep(2)
 
 keys = sorted(list(records.keys()))
 # aggregate on every column
 for c in range(0, grades_table.num_columns):
     for i in range(0, number_of_aggregates):
+        print(c, i)
         r = sorted(sample(range(0, len(keys)), 2))
         # calculate the sum form test directory
         column_sum = sum(
@@ -97,3 +106,4 @@ for c in range(0, grades_table.num_columns):
         else:
             pass
             # print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
+print(time.process_time() - start)
