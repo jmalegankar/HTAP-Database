@@ -2,6 +2,7 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
+import lstore.lock_manager as lock_manager
 import copy
 from threading import Lock
 from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
@@ -106,24 +107,34 @@ class PageRange:
     Return Record ID for table to build the index
     """
 
-    def write(self, *columns):
+    def write(self, *columns, transaction_id=None):
         assert len(columns) == self.num_of_columns
         # Data OK, create new RID for this record
+
         self.latch.acquire()
         if self.is_page_full(self.base_page_number):
             self.create_a_new_page()
+    
+        page_range_number, base_page_number = self.range_number, self.base_page_number
+        offset = self.arr_of_base_pages[base_page_number].get_next_rec_num()
+
+        self.arr_of_base_pages[base_page_number].num_records += 1
         self.latch.release()
 
         rid = create_rid(
             0,
-            self.range_number,
-            self.base_page_number,
-            self.arr_of_base_pages[self.base_page_number].get_next_rec_num()
+            page_range_number,
+            base_page_number,
+            offset
         )
 
+        # TODO: X LOCK on this RID
+        if transaction_id is not None:
+            assert lock_manager.shared.upgrade(transaction_id, rid)
+
         record = Record(rid, -1, columns)
-        self.arr_of_base_pages[self.base_page_number].write(record)
-        self.num_records += 1
+        self.arr_of_base_pages[base_page_number].write(offset, record)
+
         return rid
 
     """
@@ -220,11 +231,12 @@ class PageRange:
         previous_tail_rid, phys_pages = self.arr_of_base_pages[page_number].get_bp(offset, 0)
 
         # Generate a new RID for the latest tail record
+        new_offset = self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()
         new_tail_rid = create_rid(
             1,
             self.range_number,
             self.tail_page_number,
-            self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()
+            new_offset
         )
 
         # Generate a new record object given the RID
@@ -233,12 +245,12 @@ class PageRange:
         # Find the correct tail page and perform update
         new_schema = 0
         if previous_tail_rid == 0:
-            new_schema = self.arr_of_tail_pages[self.tail_page_number].update(base_rid, record)
+            new_schema = self.arr_of_tail_pages[self.tail_page_number].update(new_offset, base_rid, record)
         else:
             tail_page_number, tail_offset = get_page_number_and_offset(previous_tail_rid)
             tails_data = self.arr_of_tail_pages[tail_page_number].get_all_cols(tail_offset)
             new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
-                base_rid, tails_data, record
+                new_offset, base_rid, tails_data, record
             )
 
         # Set base record indirection to new tail page rid and update the schema
@@ -254,6 +266,8 @@ class PageRange:
             self.arr_of_base_pages[page_number].num_updates >= MERGE_BASE_AFTER):
             # start merging
             self.merge(page_number)
+
+        return new_tail_rid
 
     def open(self):
         data = bufferpool.shared.read_metadata(self.page_range_path + '.metadata')

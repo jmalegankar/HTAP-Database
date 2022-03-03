@@ -18,13 +18,13 @@ transactions = []
 
 for i in range(100):
 	transactions.append(Transaction())
-	xxx.append(i)
 
 for i in range(1000):
 	q = Query(table)
 	t = transactions[i % 100]
 #	t.add_query(q.select, table, i, 0, [1, 1, 1, 1, 1])
-	t.add_query(q.insert, table, [i * 1, i * 2, i * 3, i * 4, i * 5])
+#	t.add_query(q.insert, table, *[i * 1, i * 2, i * 3, i * 4, i * 5])
+	t.add_query(q.delete, table, i)
 
 transaction_workers = []
 for i in range(10):

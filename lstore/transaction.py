@@ -1,8 +1,7 @@
 from lstore.table import Table
 from lstore.record import Record
 from lstore.index import Index
-
-import uuid
+import lstore.lock_manager as lock_manager
 
 class Transaction:
 
@@ -13,9 +12,13 @@ class Transaction:
     """
     def __init__(self):
         self.queries = []
-        self.tid = uuid.uuid1()
+
+        self.tid = lock_manager.shared.tid
+        lock_manager.shared.tid += 1
+
         # allow us to rollback
         self.success_rids = []
+        # for unlock_all_locks
         self.locks = []
 
     def __str__(self):
@@ -42,17 +45,26 @@ class Transaction:
 
     def run(self):
         for query, args in self.queries:
-            if len(args) == 1:
-                result = query(*args[0])
+            query_name = query.__name__
+
+            if query_name == 'select':
+                result = query.__self__.select_transaction(*args, transaction_id = self.tid)
+            elif query_name == 'insert':
+                result = query.__self__.insert_transaction(*args, transaction_id = self.tid)
+            elif query_name == 'update':
+                result = query.__self__.update_transaction(*args, transaction_id = self.tid)
+            elif query_name == 'delete':
+                result = query.__self__.delete_transaction(*args, transaction_id = self.tid)
             else:
-                result = query(*args)
+                result = query.__self__.sum_transaction(*args, transaction_id = self.tid)
+
             # If the query has failed the transaction should abort
             if result == False:
                 return self.abort()
         return self.commit()
 
     def abort(self):
-        # Undo all indexing
+        # Delete success_rids and undo index
         self.unlock_all_locks()
         return False
 

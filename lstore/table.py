@@ -76,6 +76,7 @@ class Table:
         if self.is_page_range_full():
             self.create_a_new_page_range()
         prn = self.page_range_number
+        self.page_ranges[prn].num_records += 1
         self.latch.release()
         return prn
 
