@@ -147,7 +147,7 @@ class BasePage:
 		# Internal columns
 		phys_pages.pages[0].set(offset, 0) # indirection, default = 0
 		phys_pages.pages[1].set(offset, record.rid) # rid, given by the PageRange
-		phys_pages.pages[2].set(offset, int(time.time())) # time
+		# phys_pages.pages[2].set(offset, int(time.time())) # time
 		phys_pages.pages[3].set(offset, 0) # schema, default = 0
 
 #		print(offset, record.columns)

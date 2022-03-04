@@ -26,7 +26,7 @@ class LockManagerLock:
 	def lock(self, tid):
 		if self.owned_by is None: # is shared lock
 			self.locked_by.add(tid)
-			print(tid, 'S locked', self.rid)
+#			print(tid, 'S locked', self.rid)
 			return True
 		else:
 			return tid == self.owned_by
@@ -45,22 +45,22 @@ class LockManagerLock:
 					return False
 
 			self.owned_by = tid
-			print(tid, 'X locked', self.rid)
+#			print(tid, 'X locked', self.rid)
 			return True
 		else:
-			print(tid, 'X locked', self.rid)
+#			print(tid, 'X locked', self.rid)
 			return tid == self.owned_by
 
 	def unlock(self, tid):
 		if self.owned_by is None: # is shared lock
 			if tid in self.locked_by:
 				self.locked_by.remove(tid)
-				print(tid, 'S unlocked', self.rid)
+#				print(tid, 'S unlocked', self.rid)
 				return True
 		else:
 			if tid == self.owned_by:
 				self.owned_by = None
-				print(tid, 'X unlocked', self.rid)
+#				print(tid, 'X unlocked', self.rid)
 				return True
 		return False
 

@@ -2,6 +2,8 @@ from lstore.table import Table
 from lstore.record import Record
 from lstore.index import Index
 import lstore.lock_manager as lock_manager
+from lstore.parser import *
+import time
 
 class Transaction:
 
@@ -41,10 +43,10 @@ class Transaction:
     # t.add_query(q.update, grades_table, 0, *[None, 1, None, 2, None])
     """
     def add_query(self, query, table, *args):
-        self.queries.append((query, args))
+        self.queries.append((query, table, args))
 
     def run(self):
-        for query, args in self.queries:
+        for query, table, args in self.queries:
             query_name = query.__name__
 
             if query_name == 'select':
@@ -69,7 +71,7 @@ class Transaction:
                 )
 
             self.locks += holding_locks
-            self.success_rids += success_rids
+            self.success_rids += [[query_name, table, success_rids]]
             # If the query has failed the transaction should abort
             if result == False:
                 return self.abort()
@@ -82,6 +84,19 @@ class Transaction:
 
     def commit(self):
         # TODO: commit to database
+        for result in self.success_rids:
+            query_name = result[0]
+            table = result[1]
+            rids = result[2]
+
+            if query_name == 'insert':
+                # set timestamp
+                for rid in rids:
+                    base_page_range = get_page_range_number(rid)
+                    base_page_number, base_offset = get_page_number_and_offset(rid)
+                    table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                        base_offset, int(time.time()), 2
+                    )
         self.unlock_all_locks()
         return True
 

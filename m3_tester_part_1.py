@@ -94,7 +94,6 @@ for i in range(1):
         if error:
             print('select error on', key, ':', record, ', correct:', records[key])
     #       print(bufferpool.shared)
-            break
         else:
             pass
             # print('select on', key, ':', record)
