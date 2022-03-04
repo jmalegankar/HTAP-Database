@@ -2,10 +2,12 @@ from lstore.db import Database
 from lstore.query import Query
 from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
+import lstore.lock_manager as lock_manager
 
 from random import choice, randint, sample, seed
 
 db = Database()
+db.open('./database')
 # Getting the existing Grades table
 grades_table = db.get_table('Grades')
 
@@ -28,7 +30,7 @@ seed(3562901)
 for i in range(0, number_of_records):
     key = 92106429 + i
     keys.append(key)
-    records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
+    records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
 
 transaction_workers = []
 transactions = []
@@ -40,13 +42,13 @@ for i in range(num_threads):
     transaction_workers.append(TransactionWorker())
 
 
-
+"""
 for i in range(0, number_of_records):
     key = 92106429 + i
     keys.append(key)
     records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
     q = Query(grades_table)
-
+"""
 
 # x update on every column
 for j in range(number_of_operations_per_record):
@@ -62,16 +64,19 @@ for j in range(number_of_operations_per_record):
             records[key][i] = value
             transactions[j % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
             transactions[j % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
+            print('transactions', j % number_of_transactions, 'added update query', key, *updated_columns)
+#           print((j % number_of_transactions), key, updated_columns)
 print("Update finished")
 
 
 # add trasactions to transaction workers  
 for i in range(number_of_transactions):
+    print(i % num_threads, 'will take', i)
     transaction_workers[i % num_threads].add_transaction(transactions[i])
 
 
 
-# run transaction workers
+# run transaction workers 
 for i in range(num_threads):
     transaction_workers[i].run()
 
@@ -79,16 +84,22 @@ for i in range(num_threads):
 for i in range(num_threads):
     transaction_workers[i].join()
 
+for i in range(num_threads):
+    if transaction_workers[i].result != len(transaction_workers[i].transactions):
+        print('Something is wrong with transaction_workers', i)
 
 score = len(keys)
 for key in keys:
     correct = records[key]
     query = Query(grades_table)
     
-    result = query.select(key, 0, [1, 1, 1, 1, 1])[0].columns
-    if correct != result:
+    result = query.select(key, 0, [1, 1, 1, 1, 1])[0]
+    if correct != result.columns:
         print('select error on primary key', key, ':', result, ', correct:', correct)
         score -= 1
+    else:
+        print('primary key', key, 'ok!')
 print('Score', score, '/', len(keys))
-
 db.close()
+"""
+"""

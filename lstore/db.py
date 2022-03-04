@@ -28,6 +28,8 @@ class Database():
 
         self.merge_worker.queue.join()
 
+        bufferpool.shared.close()
+
         bufferpool.shared.write_metadata('database.db', (
             list(self.tables.keys())
         ))

@@ -218,24 +218,28 @@ class PageRange:
 
     def update(self, base_rid, *columns):
         assert len(columns) == self.num_of_columns
+        base_page_number, base_offset = get_page_number_and_offset(base_rid)
+
 
         self.latch.acquire()
         if self.is_page_full(self.tail_page_number, True):
             self.create_a_new_page(True)
+
+        page_range_number, tail_page_number = self.range_number, self.tail_page_number
+        new_offset = self.arr_of_tail_pages[tail_page_number].get_next_rec_num()
+
+        self.arr_of_tail_pages[tail_page_number].num_records += 1
         self.latch.release()
 
-        page_number, offset = get_page_number_and_offset(base_rid)
 
         # Get indirection column value aka previous tail RID
-        # NEED TO RETURN BUFFERPOOL PIN OBJECT (1)
-        previous_tail_rid, phys_pages = self.arr_of_base_pages[page_number].get_bp(offset, 0)
+        previous_tail_rid, phys_pages = self.arr_of_base_pages[base_page_number].get_bp(base_offset, 0)
 
         # Generate a new RID for the latest tail record
-        new_offset = self.arr_of_tail_pages[self.tail_page_number].get_next_rec_num()
         new_tail_rid = create_rid(
             1,
-            self.range_number,
-            self.tail_page_number,
+            page_range_number,
+            tail_page_number,
             new_offset
         )
 
@@ -245,27 +249,29 @@ class PageRange:
         # Find the correct tail page and perform update
         new_schema = 0
         if previous_tail_rid == 0:
-            new_schema = self.arr_of_tail_pages[self.tail_page_number].update(new_offset, base_rid, record)
+            new_schema = self.arr_of_tail_pages[tail_page_number].update(new_offset, base_rid, record)
         else:
-            tail_page_number, tail_offset = get_page_number_and_offset(previous_tail_rid)
-            tails_data = self.arr_of_tail_pages[tail_page_number].get_all_cols(tail_offset)
-            new_schema = self.arr_of_tail_pages[self.tail_page_number].tail_update(
+            previous_tail_page_number, previous_tail_offset = get_page_number_and_offset(previous_tail_rid)
+            tails_data = self.arr_of_tail_pages[previous_tail_page_number].get_all_cols(previous_tail_offset)
+            new_schema = self.arr_of_tail_pages[tail_page_number].tail_update(
                 new_offset, base_rid, tails_data, record
             )
 
         # Set base record indirection to new tail page rid and update the schema
-        self.arr_of_base_pages[page_number].set(offset, new_tail_rid, 0)
-        self.arr_of_base_pages[page_number].set(offset, new_schema, 3)
+        self.arr_of_base_pages[base_page_number].set(base_offset, new_tail_rid, 0)
+        self.arr_of_base_pages[base_page_number].set(base_offset, new_schema, 3)
 
         # UNPIN HERE (1)
+        phys_pages.lock.acquire()
         phys_pages.pinned -= 1
+        phys_pages.lock.release()
 
-        self.arr_of_base_pages[page_number].num_updates += 1
+        self.arr_of_base_pages[base_page_number].num_updates += 1
         # Merge each base page only
-        if (self.arr_of_base_pages[page_number].num_records >= 511 and 
-            self.arr_of_base_pages[page_number].num_updates >= MERGE_BASE_AFTER):
+        if (self.arr_of_base_pages[base_page_number].num_records >= 511 and 
+            self.arr_of_base_pages[base_page_number].num_updates >= MERGE_BASE_AFTER):
             # start merging
-            self.merge(page_number)
+            self.merge(base_page_number)
 
         return new_tail_rid
 
@@ -305,8 +311,11 @@ class PageRange:
 
     # Merge each base page
     def merge(self, page_number):
+        pass
+        """
         if 0 <= page_number <= self.base_page_number:
             self.arr_of_base_pages[page_number].num_updates = 0
             self.merge_worker.queue.put(
                 (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
             )
+        """

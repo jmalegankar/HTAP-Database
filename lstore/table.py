@@ -114,8 +114,6 @@ class Table:
         for page_range in self.page_ranges:
             page_range.close()
 
-        bufferpool.shared.close()
-
     def __merge(self):
         # merge all base page with num_records == 511
         print("merge is happening")

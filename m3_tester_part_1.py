@@ -3,6 +3,7 @@ from lstore.query import Query
 from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 import lstore.bufferpool as bufferpool
+import lstore.lock_manager as lock_manager
 
 from random import choice, randint, sample, seed
 import shutil
@@ -13,6 +14,7 @@ for i in range(1):
         pass
     
     db = Database()
+    db.open('./database')
     # creating grades table
     grades_table = db.create_table('Grades', 5, 0)
     
@@ -51,6 +53,8 @@ for i in range(1):
         q = Query(grades_table)
         t = insert_transactions[i % number_of_transactions]
         t.add_query(q.insert, grades_table, *records[key])
+#       t = insert_transactions[(i+1) % number_of_transactions]
+#       t.add_query(q.delete, grades_table, key)
     
     transaction_workers = []
     for i in range(num_threads):
@@ -73,7 +77,13 @@ for i in range(1):
         if transaction_workers[i].result != len(transaction_workers[i].transactions):
             print('Something is wrong with transaction_workers', i)
     
-    
+#   db.close()
+#   db = Database()
+#   db.open('./database')
+#   # creating grades table
+#   grades_table = db.create_table('Grades', 5, 0)
+#   query = Query(grades_table)
+
     # Check inserted records using select query in the main thread outside workers
     for key in keys:
         record = query.select(key, 0, [1, 1, 1, 1, 1])[0]

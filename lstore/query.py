@@ -61,14 +61,16 @@ class Query:
             self.table.index_latch.acquire()
             rid = self.table.index.locate(self.table.key, primary_key)
             self.table.index_latch.release()
-            
+
             if rid is None:
+                print(transaction_id, 'KEY NOT EXISTS')
                 return False, [], []
             
             page_range_number = get_page_range_number(rid)
             
             # X Lock for RID
             if not lock_manager.shared.upgrade(transaction_id, rid):
+                print(transaction_id, '2PL LOCKING IN PROGRESS!!!')
                 return False, [], []
             else:
                 holding_locks.append(rid)
@@ -324,6 +326,8 @@ class Query:
 
     def update_transaction(self, primary_key, *columns, transaction_id: int):
         holding_locks, success_rids = [], []
+#       self.table.latch.acquire()
+        print(transaction_id, 'started', primary_key, columns)
         try:
             self.table.index_latch.acquire()
             rid = self.table.index.locate(self.table.key, primary_key)
@@ -338,24 +342,24 @@ class Query:
                     self.index_latch.release()
                     return False, [], []
                 self.table.index_latch.release()
-                
+
             # X LOCK for RID
-            if not lock_manager.shared.lock(transaction_id, rid):
-                return False, holding_locks, success_rids
+            if not lock_manager.shared.upgrade(transaction_id, rid):
+                return False, [], []
             else:
                 holding_locks.append(rid)
 
             page_range_number = get_page_range_number(rid)
-            
+
             data = self.table.page_ranges[page_range_number].get_withRID(
                 rid, [0 if column is None else 1 for column in columns]
             )
-            
+
             new_tail_rid = self.table.page_ranges[page_range_number].update(rid, *columns)
             
             success_rids.append(rid)
             success_rids.append(new_tail_rid)
-            
+
             self.table.index_latch.acquire()
             for col, value in enumerate(columns):
                 if value is not None and self.table.index.indexed_columns[col] == 1:
@@ -366,6 +370,8 @@ class Query:
             return False, holding_locks, success_rids
         else:
             return True, holding_locks, success_rids
+#       finally:
+#           self.table.latch.release()
 
     """
     :param start_range: int         # Start of the key range to aggregate 

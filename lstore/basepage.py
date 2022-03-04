@@ -145,7 +145,7 @@ class BasePage:
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
 		# Internal columns
-		phys_pages.pages[0].set(offset, 0) # indirection, default = ?
+		phys_pages.pages[0].set(offset, 0) # indirection, default = 0
 		phys_pages.pages[1].set(offset, record.rid) # rid, given by the PageRange
 		phys_pages.pages[2].set(offset, int(time.time())) # time
 		phys_pages.pages[3].set(offset, 0) # schema, default = 0
@@ -185,7 +185,6 @@ class BasePage:
 		phys_pages.pages[3].set(offset, schema)
 		phys_pages.pages[4].set(offset, base_rid)
 
-		self.num_records += 1
 		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		phys_pages.lock.release()
@@ -210,7 +209,7 @@ class BasePage:
 
 		phys_pages.pages[3].set(offset, schema)
 		phys_pages.pages[4].set(offset, base_rid)
-		self.num_records += 1
+		
 		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		phys_pages.lock.release()

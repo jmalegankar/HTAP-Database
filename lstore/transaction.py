@@ -48,16 +48,28 @@ class Transaction:
             query_name = query.__name__
 
             if query_name == 'select':
-                result = query.__self__.select_transaction(*args, transaction_id = self.tid)
+                result, holding_locks, success_rids = query.__self__.select_transaction(
+                    *args, transaction_id = self.tid
+                )
             elif query_name == 'insert':
-                result = query.__self__.insert_transaction(*args, transaction_id = self.tid)
+                result, holding_locks, success_rids = query.__self__.insert_transaction(
+                    *args, transaction_id = self.tid
+                )
             elif query_name == 'update':
-                result = query.__self__.update_transaction(*args, transaction_id = self.tid)
+                result, holding_locks, success_rids = query.__self__.update_transaction(
+                    *args, transaction_id = self.tid
+                )
             elif query_name == 'delete':
-                result = query.__self__.delete_transaction(*args, transaction_id = self.tid)
+                result, holding_locks, success_rids = query.__self__.delete_transaction(
+                    *args, transaction_id = self.tid
+                )
             else:
-                result = query.__self__.sum_transaction(*args, transaction_id = self.tid)
+                result, holding_locks, success_rids = query.__self__.sum_transaction(
+                    *args, transaction_id = self.tid
+                )
 
+            self.locks += holding_locks
+            self.success_rids += success_rids
             # If the query has failed the transaction should abort
             if result == False:
                 return self.abort()
@@ -77,5 +89,7 @@ class Transaction:
     Unlock all holding locks
     """
     def unlock_all_locks(self):
+        for lock in self.locks:
+            lock_manager.shared.unlock(self.tid, lock)
         pass
         
