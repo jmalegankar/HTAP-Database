@@ -96,7 +96,6 @@ class LockManager:
 	def start(self):
 		self.latch = Lock()
 		self.locks = LockManagerDict()
-		self.tid = 0
 
 	"""
 	TID locks BASE RID
@@ -128,10 +127,9 @@ class LockManager:
 		self.latch.release()
 		return result
 
-shared = LockManager()
-
 
 if __name__ == '__main__':
+	shared = LockManager()
 	print(shared.lock(0, 12345))
 	print(shared.lock(0, 1234))
 	print(shared.lock(1, 1234))

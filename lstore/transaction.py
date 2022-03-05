@@ -1,8 +1,8 @@
 from lstore.table import Table
 from lstore.record import Record
 from lstore.index import Index
-import lstore.lock_manager as lock_manager
 from lstore.parser import *
+import lstore.transaction_id as transaction_id
 import time
 
 class Transaction:
@@ -15,8 +15,8 @@ class Transaction:
     def __init__(self):
         self.queries = []
 
-        self.tid = lock_manager.shared.tid
-        lock_manager.shared.tid += 1
+        self.tid = transaction_id.next_id
+        transaction_id.next_id += 1
 
         # allow us to rollback
         self.success_rids = []
@@ -57,23 +57,26 @@ class Transaction:
                 result, holding_locks, success_rids = query.__self__.insert_transaction(
                     *args, transaction_id = self.tid
                 )
+                self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'update':
                 result, holding_locks, success_rids = query.__self__.update_transaction(
                     *args, transaction_id = self.tid
                 )
+                self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'delete':
                 result, holding_locks, success_rids = query.__self__.delete_transaction(
                     *args, transaction_id = self.tid
                 )
+                self.success_rids += [(query_name, table, success_rids)]
             else:
                 result, holding_locks, success_rids = query.__self__.sum_transaction(
                     *args, transaction_id = self.tid
                 )
 
-            self.locks += holding_locks
-            self.success_rids += [[query_name, table, success_rids]]
+            self.locks += [(table, holding_locks)]
             # If the query has failed the transaction should abort
             if result == False:
+                print(self.tid, query_name, args, 'failed!')
                 return self.abort()
         return self.commit()
 
@@ -84,19 +87,47 @@ class Transaction:
 
     def commit(self):
         # TODO: commit to database
-        for result in self.success_rids:
-            query_name = result[0]
-            table = result[1]
-            rids = result[2]
+        for query_table_rids in self.success_rids:
+            query_name = query_table_rids[0]
+            table = query_table_rids[1]
+            rids = query_table_rids[2]
 
             if query_name == 'insert':
                 # set timestamp
-                for rid in rids:
-                    base_page_range = get_page_range_number(rid)
-                    base_page_number, base_offset = get_page_number_and_offset(rid)
-                    table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
-                        base_offset, int(time.time()), 2
-                    )
+                rid = rids[0]
+                base_page_range = get_page_range_number(rid)
+                base_page_number, base_offset = get_page_number_and_offset(rid)
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                    base_offset, int(time.time()), 2
+                )
+            elif query_name == 'update':
+                # update indirection column
+                # find base page and set indirection to tail
+                # also change page_range update to not update base tail
+                base_page_range = get_page_range_number(rids[0])
+                base_page_number, base_offset = get_page_number_and_offset(rids[0])
+                """
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                    base_offset, rids[1], 0
+                )
+                """
+
+                base=table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].get_all_cols(
+                    base_offset
+                )
+
+                base_page_range = get_page_range_number(rids[1])
+                base_page_number, base_offset = get_page_number_and_offset(rids[1])
+                tail=table.page_ranges[base_page_range].arr_of_tail_pages[base_page_number].get_all_cols(
+                    base_offset
+                )
+
+                print(rids[0], rids[1])
+                print(base,tail)
+                pass
+            elif query_name == 'delete':
+                # update indirection column to 'deleted'
+                pass
         self.unlock_all_locks()
         return True
 
@@ -104,7 +135,7 @@ class Transaction:
     Unlock all holding locks
     """
     def unlock_all_locks(self):
-        for lock in self.locks:
-            lock_manager.shared.unlock(self.tid, lock)
+        for table_lock in self.locks:
+            for lock in table_lock[1]:
+                table_lock[0].lock_manager.unlock(self.tid, lock)
         pass
-        

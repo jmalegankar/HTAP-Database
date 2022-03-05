@@ -5,6 +5,11 @@ from lstore.transaction_worker import TransactionWorker
 
 from random import choice, randint, sample, seed
 
+import shutil
+try:
+    shutil.rmtree('./ECS165')
+except:
+    pass
 
 db = Database()
 db.open('./ECS165')

@@ -1,8 +1,8 @@
 from lstore.record import Record
 from lstore.parser import *
+from lstore.table import Table
 import re
 from threading import Lock
-import lstore.lock_manager as lock_manager
 
 class Query:
 
@@ -15,7 +15,7 @@ class Query:
     Any query that crashes (due to exceptions) should return False
     """
 
-    def __init__(self, table):
+    def __init__(self, table: Table):
         self.table = table
 
     """
@@ -55,6 +55,7 @@ class Query:
             return True
 
     def delete_transaction(self, primary_key, transaction_id: int):
+        lock_manager = self.table.lock_manager
         holding_locks, success_rids = [], []
 
         try:
@@ -63,14 +64,12 @@ class Query:
             self.table.index_latch.release()
 
             if rid is None:
-                print(transaction_id, 'KEY NOT EXISTS')
                 return False, [], []
             
             page_range_number = get_page_range_number(rid)
             
             # X Lock for RID
-            if not lock_manager.shared.upgrade(transaction_id, rid):
-                print(transaction_id, '2PL LOCKING IN PROGRESS!!!')
+            if not lock_manager.upgrade(transaction_id, rid):
                 return False, [], []
             else:
                 holding_locks.append(rid)
@@ -82,7 +81,7 @@ class Query:
             
             self.table.page_ranges[page_range_number].delete_withRID(rid)
 
-            success_rids.append(rid)
+            success_rids = [rid]
 
             self.table.index_latch.acquire()
             for col, value in enumerate(data):
@@ -141,6 +140,7 @@ class Query:
             self.table.index_latch.release()
             if rid is not None:
                 # Primary key must be unique
+                # print('primary key not unique')
                 return False, holding_locks, success_rids
 
             page_range_number = self.table.get_next_page_range_number()
@@ -148,7 +148,7 @@ class Query:
             # X LOCK for RID inside the write function, should not abort
             rid = self.table.page_ranges[page_range_number].write(*columns, transaction_id=transaction_id)
             holding_locks.append(rid)
-            success_rids.append(rid)
+            success_rids = [rid]
 
             # Set indices for each column
             self.table.index_latch.acquire()
@@ -160,6 +160,7 @@ class Query:
         except ValueError as e:
             return False, holding_locks, success_rids
         else:
+            # print(columns[self.table.key], 'inserted')
             return True, holding_locks, success_rids
 
     """
@@ -222,6 +223,7 @@ class Query:
             return False
 
     def select_transaction(self, index_value, index_column, query_columns, transaction_id: int):
+        lock_manager = self.table.lock_manager
         holding_locks = []
 
         try:
@@ -242,7 +244,7 @@ class Query:
 
                 # S LOCK for RIDS
                 for rid in rids:
-                    if not lock_manager.shared.lock(transaction_id, rid):
+                    if not lock_manager.lock(transaction_id, rid):
                         return False, holding_locks, []
                     else:
                         holding_locks.append(rid)
@@ -265,7 +267,7 @@ class Query:
                 
                 # S LOCK for RIDS
                 for rid in rids:
-                    if not lock_manager.shared.lock(transaction_id, rid):
+                    if not lock_manager.lock(transaction_id, rid):
                         return False, holding_locks, []
                     else:
                         holding_locks.append(rid)
@@ -325,15 +327,16 @@ class Query:
             return True
 
     def update_transaction(self, primary_key, *columns, transaction_id: int):
+        lock_manager = self.table.lock_manager
         holding_locks, success_rids = [], []
-#       self.table.latch.acquire()
-        print(transaction_id, 'started', primary_key, columns)
+
         try:
             self.table.index_latch.acquire()
             rid = self.table.index.locate(self.table.key, primary_key)
             self.table.index_latch.release()
             
             if rid is None:
+                print('rid is None')
                 return False, [], []
             
             if columns[self.table.key] is not None:
@@ -344,7 +347,8 @@ class Query:
                 self.table.index_latch.release()
 
             # X LOCK for RID
-            if not lock_manager.shared.upgrade(transaction_id, rid):
+            if not lock_manager.upgrade(transaction_id, rid):
+                print('no rid')
                 return False, [], []
             else:
                 holding_locks.append(rid)
@@ -357,8 +361,7 @@ class Query:
 
             new_tail_rid = self.table.page_ranges[page_range_number].update(rid, *columns)
             
-            success_rids.append(rid)
-            success_rids.append(new_tail_rid)
+            success_rids = [rid, new_tail_rid]
 
             self.table.index_latch.acquire()
             for col, value in enumerate(columns):
@@ -370,8 +373,6 @@ class Query:
             return False, holding_locks, success_rids
         else:
             return True, holding_locks, success_rids
-#       finally:
-#           self.table.latch.release()
 
     """
     :param start_range: int         # Start of the key range to aggregate 
@@ -400,7 +401,9 @@ class Query:
             return False
 
     def sum_transaction(self, start_range, end_range, aggregate_column_index, transaction_id: int):
+        lock_manager = self.table.lock_manager
         holding_locks = []
+
         try:
             self.table.index_latch.acquire()
             rids = self.table.index.locate_range(start_range, end_range, self.table.key)
@@ -412,7 +415,7 @@ class Query:
 
             # S LOCK for RIDS
             for rid in rids:
-                if not lock_manager.shared.lock(transaction_id, rid):
+                if not lock_manager.lock(transaction_id, rid):
                     return False, holding_locks, []
                 else:
                     holding_locks.append(rid)
@@ -438,7 +441,7 @@ class Query:
         if result is not False:
             updated_columns = [None] * self.table.num_columns
             updated_columns[column] = result[column] + 1
-            updated = self.update(key, *updated_columns, transaction_id=transaction_id)
+            updated = self.update(key, *updated_columns)
             return updated
         return False
 

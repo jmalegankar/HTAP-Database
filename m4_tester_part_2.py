@@ -5,6 +5,12 @@ from lstore.transaction_worker import TransactionWorker
 import lstore.lock_manager as lock_manager
 from random import choice, randint, sample, seed
 
+import shutil
+try:
+    shutil.rmtree('./ECS165')
+except:
+    pass
+
 db = Database()
 db.open('./ECS165')
 grades_table = db.create_table('Grades', 5, 0)
@@ -44,7 +50,6 @@ for i in range(0, 1000):
     q = Query(grades_table)
     insert_transactions[i].add_query(q.insert, grades_table, *records[key])
     worker_keys[i][key] = True
-
 t = 0
 _records = [records[key] for key in keys]
 for c in range(grades_table.num_columns):
@@ -77,17 +82,24 @@ for transaction_worker in transaction_workers:
 for transaction_worker in transaction_workers:
     transaction_worker.join()
 
+for i in range(num_threads):
+    if transaction_workers[i].result != len(transaction_workers[i].transactions):
+        print('Something is wrong with transaction_workers', i)
+"""
 score = len(keys)
 for key in keys:
     correct = records[key]
     query = Query(grades_table)
     #TODO: modify this line based on what your SELECT returns
-    result = query.select(key, 0, [1, 1, 1, 1, 1])
-    if result != False:
-        result = result[0].columns
+    res = query.select(key, 0, [1, 1, 1, 1, 1])
+    if res != False:
+        result = res[0].columns
     if correct != result:
-        print('select error on primary key', key, ':', result, ', correct:', correct)
+        print('select error on primary key', key, ':', res, ', correct:', correct)
         score -= 1
+        exit()
 print('Score', score, '/', len(keys))
+
+"""
 
 db.close()

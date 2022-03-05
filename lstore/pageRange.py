@@ -2,7 +2,6 @@ from lstore.basepage import BasePage
 from lstore.record import Record
 from lstore.parser import *
 import lstore.bufferpool as bufferpool
-import lstore.lock_manager as lock_manager
 import copy
 from threading import Lock
 from lstore.config import PAGE_RANGE_SIZE, MERGE_BASE_AFTER
@@ -11,9 +10,9 @@ class PageRange:
 
     __slots__ = ('num_of_columns', 'arr_of_base_pages', 'arr_of_tail_pages',
         'range_number', 'base_page_number', 'tail_page_number', 'page_range_path',
-        'num_records', 'num_updates', 'merge_worker', 'latch')
+        'num_records', 'num_updates', 'merge_worker', 'latch', 'lock_manager')
 
-    def __init__(self, table_name, columns, range_number, open_from_db=False, merge_worker=None):
+    def __init__(self, table_name, columns, range_number, open_from_db=False, merge_worker=None, lock_manager=None):
         self.num_of_columns = columns
         self.arr_of_base_pages=[]
         self.arr_of_tail_pages=[]
@@ -34,6 +33,7 @@ class PageRange:
             self.open()
 
         self.merge_worker = merge_worker
+        self.lock_manager = lock_manager
 
     """
     Debug Only
@@ -130,7 +130,7 @@ class PageRange:
 
         # TODO: X LOCK on this RID
         if transaction_id is not None:
-            assert lock_manager.shared.upgrade(transaction_id, rid)
+            assert self.lock_manager.upgrade(transaction_id, rid)
 
         record = Record(rid, -1, columns)
         self.arr_of_base_pages[base_page_number].write(offset, record)

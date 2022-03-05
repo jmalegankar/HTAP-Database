@@ -3,6 +3,7 @@ from lstore.pageRange import PageRange
 from lstore.config import PAGE_RANGE_SIZE
 import lstore.bufferpool as bufferpool
 from threading import Lock
+from lstore.lock_manager import LockManager
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
@@ -12,7 +13,8 @@ SCHEMA_ENCODING_COLUMN = 3
 class Table:
     
     __slots__ = ('page_ranges', 'name', 'records_per_range', 'num_columns', 'key',
-        'index', 'page_range_number', 'merge_worker', 'latch', 'index_latch')
+        'index', 'page_range_number', 'merge_worker', 'latch', 'index_latch', 'lock_manager'
+        )
 
     """
     :param name: string         #Table name
@@ -25,10 +27,11 @@ class Table:
         self.name = name
         self.latch = Lock()
         self.index_latch = Lock()
+        self.lock_manager = LockManager()
 
         # PAGE_RANGE_SIZE base pages, each 511 records is the max
         self.records_per_range = PAGE_RANGE_SIZE * 511
-        
+
         self.merge_worker = merge_worker
         if open_from_db and self.open():
             pass
@@ -62,7 +65,8 @@ class Table:
             self.name,
             self.num_columns,
             self.page_range_number,
-            merge_worker=self.merge_worker
+            merge_worker=self.merge_worker,
+            lock_manager=self.lock_manager
         ))
 
     def is_page_range_full(self):
@@ -94,7 +98,8 @@ class Table:
                     self.num_columns,
                     page_range,
                     True,
-                    merge_worker=self.merge_worker
+                    merge_worker=self.merge_worker,
+                    lock_manager=self.lock_manager
                 ))
 
             self.index = Index(self, data_index)
