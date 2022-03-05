@@ -75,6 +75,10 @@ class BasePage:
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
 		return phys_pages.pages[column].get(rec_num), phys_pages
 
+	def get_bp_only(self):
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		return phys_pages
+
 	"""
 	Quicker setter to access page set
 	"""

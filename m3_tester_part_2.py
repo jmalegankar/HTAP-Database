@@ -83,9 +83,9 @@ for i in range(num_threads):
     transaction_workers[i].join()
 
 for i in range(num_threads):
-    print(transaction_workers[i].result, 'ok, we have',  len(transaction_workers[i].transactions))
+    # print(transaction_workers[i].result, 'ok, we have',  len(transaction_workers[i].transactions))
     if transaction_workers[i].result != len(transaction_workers[i].transactions):
-        print('Something is wrong with transaction_workers', i)
+        print('[A] Something is wrong with transaction_workers', i)
 
 
 
@@ -96,12 +96,50 @@ for key in keys:
     
     result = query.select(key, 0, [1, 1, 1, 1, 1])[0]
     if correct != result.columns:
-        #print('select error on primary key', key, ':', result, ', correct:', correct)
+        print('select error on primary key', key, ':', result, ', correct:', correct)
         score -= 1
     # else:
     #     print('primary key', key, 'ok!')
 print('Score', score, '/', len(keys))
 
+
+delete_transaction_workers = []
+delete_transactions = []
+
+# Delete all records
+for i in range(number_of_transactions):
+    delete_transactions.append(Transaction())
+
+for i in range(num_threads):
+    delete_transaction_workers.append(TransactionWorker())
+
+query = Query(grades_table)
+
+for i, key in enumerate(keys):
+    delete_transactions[i % number_of_transactions].add_query(query.delete, grades_table, key)
+
+for i in range(number_of_transactions):
+    delete_transaction_workers[i % num_threads].add_transaction(delete_transactions[i])
+
+# run transaction workers 
+for i in range(num_threads):
+    delete_transaction_workers[i].run()
+
+# wait for workers to finish
+for i in range(num_threads):
+    delete_transaction_workers[i].join()
+
+for i in range(num_threads):
+    # print(delete_transaction_workers[i].result, 'ok, we have',  len(delete_transaction_workers[i].transactions))
+    if delete_transaction_workers[i].result != len(delete_transaction_workers[i].transactions):
+        print('[B] Something is wrong with transaction_workers', i)
+
+query = Query(grades_table)
+for key in keys:
+    result = query.select(key, 0, [1, 1, 1, 1, 1])
+    if len(result) > 0:
+        print('delete error on primary key', key, ':', result, 'expected: []')
+print('delete OK!')
 """
 """
 

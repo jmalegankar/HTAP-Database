@@ -216,7 +216,7 @@ class PageRange:
     Needs a base RID to update and columns of data.
     """
 
-    def update(self, base_rid, *columns):
+    def update(self, base_rid, *columns, prevTail: int):
         assert len(columns) == self.num_of_columns
         base_page_number, base_offset = get_page_number_and_offset(base_rid)
 
@@ -233,7 +233,11 @@ class PageRange:
 
 
         # Get indirection column value aka previous tail RID
-        previous_tail_rid, phys_pages = self.arr_of_base_pages[base_page_number].get_bp(base_offset, 0)
+        if prevTail == -1:
+            previous_tail_rid, phys_pages = self.arr_of_base_pages[base_page_number].get_bp(base_offset, 0)
+        else:
+            previous_tail_rid = prevTail
+            phys_pages = self.arr_of_base_pages[base_page_number].get_bp_only()
 
         # Generate a new RID for the latest tail record
         new_tail_rid = create_rid(
@@ -258,7 +262,7 @@ class PageRange:
             )
 
         # Set base record indirection to new tail page rid and update the schema
-        self.arr_of_base_pages[base_page_number].set(base_offset, new_tail_rid, 0)
+        # self.arr_of_base_pages[base_page_number].set(base_offset, new_tail_rid, 0)
         self.arr_of_base_pages[base_page_number].set(base_offset, new_schema, 3)
 
         # UNPIN HERE (1)

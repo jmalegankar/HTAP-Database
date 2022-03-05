@@ -85,7 +85,7 @@ for transaction_worker in transaction_workers:
 for i in range(num_threads):
     if transaction_workers[i].result != len(transaction_workers[i].transactions):
         print('Something is wrong with transaction_workers', i)
-"""
+
 score = len(keys)
 for key in keys:
     correct = records[key]
@@ -97,9 +97,9 @@ for key in keys:
     if correct != result:
         print('select error on primary key', key, ':', res, ', correct:', correct)
         score -= 1
-        exit()
+        # exit()
 print('Score', score, '/', len(keys))
 
-"""
+""""""
 
 db.close()

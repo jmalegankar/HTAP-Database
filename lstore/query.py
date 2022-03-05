@@ -79,7 +79,8 @@ class Query:
                 self.table.index.indexed_columns
             )
             
-            self.table.page_ranges[page_range_number].delete_withRID(rid)
+            # Need a way to indicate we deleted the value
+            # self.table.page_ranges[page_range_number].delete_withRID(rid)
 
             success_rids = [rid]
 
@@ -326,10 +327,9 @@ class Query:
         else:
             return True
 
-    def update_transaction(self, primary_key, *columns, transaction_id: int):
+    def update_transaction(self, primary_key, *columns, transaction_id: int, prevTailDict):
         lock_manager = self.table.lock_manager
         holding_locks, success_rids = [], []
-
         try:
             self.table.index_latch.acquire()
             rid = self.table.index.locate(self.table.key, primary_key)
@@ -359,8 +359,9 @@ class Query:
                 rid, [0 if column is None else 1 for column in columns]
             )
 
-            new_tail_rid = self.table.page_ranges[page_range_number].update(rid, *columns)
-            
+            prevTail = prevTailDict.get(rid, -1)
+            new_tail_rid = self.table.page_ranges[page_range_number].update(rid, *columns, prevTail=prevTail)
+
             success_rids = [rid, new_tail_rid]
 
             self.table.index_latch.acquire()

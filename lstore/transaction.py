@@ -7,7 +7,7 @@ import time
 
 class Transaction:
 
-    __slots__ = 'queries', 'tid', 'success_rids', 'locks'
+    __slots__ = 'queries', 'tid', 'success_rids', 'locks', 'update_rid'
 
     """
     # Creates a transaction object.
@@ -22,6 +22,7 @@ class Transaction:
         self.success_rids = []
         # for unlock_all_locks
         self.locks = []
+        self.update_rid = {} # map rid 
 
     def __str__(self):
         string = 'Transaction {}\n'.format(self.tid)
@@ -60,8 +61,9 @@ class Transaction:
                 self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'update':
                 result, holding_locks, success_rids = query.__self__.update_transaction(
-                    *args, transaction_id = self.tid
+                    *args, transaction_id = self.tid, prevTailDict = self.update_rid
                 )
+                self.update_rid[success_rids[0]] = success_rids[1]
                 self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'delete':
                 result, holding_locks, success_rids = query.__self__.delete_transaction(
@@ -104,30 +106,21 @@ class Transaction:
                 # update indirection column
                 # find base page and set indirection to tail
                 # also change page_range update to not update base tail
-                base_page_range = get_page_range_number(rids[0])
-                base_page_number, base_offset = get_page_number_and_offset(rids[0])
-                """
+                rid = rids[0]
+                base_page_range = get_page_range_number(rid)
+                base_page_number, base_offset = get_page_number_and_offset(rid)
+
                 table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
                     base_offset, rids[1], 0
                 )
-                """
-
-                base=table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].get_all_cols(
-                    base_offset
-                )
-
-                base_page_range = get_page_range_number(rids[1])
-                base_page_number, base_offset = get_page_number_and_offset(rids[1])
-                tail=table.page_ranges[base_page_range].arr_of_tail_pages[base_page_number].get_all_cols(
-                    base_offset
-                )
-
-                print(rids[0], rids[1])
-                print(base,tail)
-                pass
             elif query_name == 'delete':
                 # update indirection column to 'deleted'
-                pass
+                rid = rids[0]
+                base_page_range = get_page_range_number(rid)
+                base_page_number, base_offset = get_page_number_and_offset(rid)
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                    base_offset, 200000000, 0
+                )
         self.unlock_all_locks()
         return True
 
