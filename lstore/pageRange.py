@@ -133,7 +133,10 @@ class PageRange:
             assert self.lock_manager.upgrade(transaction_id, rid)
 
         record = Record(rid, -1, columns)
-        self.arr_of_base_pages[base_page_number].write(offset, record)
+        if transaction_id is None:
+            self.arr_of_base_pages[base_page_number].write(offset, record)
+        else:
+            self.arr_of_base_pages[base_page_number].write(offset, record, from_transaction=True)
 
         return rid
 
@@ -216,7 +219,7 @@ class PageRange:
     Needs a base RID to update and columns of data.
     """
 
-    def update(self, base_rid, *columns, prevTail: int):
+    def update(self, base_rid, *columns, prevTail: int = -1, from_transaction=False):
         assert len(columns) == self.num_of_columns
         base_page_number, base_offset = get_page_number_and_offset(base_rid)
 
@@ -262,7 +265,8 @@ class PageRange:
             )
 
         # Set base record indirection to new tail page rid and update the schema
-        # self.arr_of_base_pages[base_page_number].set(base_offset, new_tail_rid, 0)
+        if not from_transaction:
+            self.arr_of_base_pages[base_page_number].set(base_offset, new_tail_rid, 0)
         self.arr_of_base_pages[base_page_number].set(base_offset, new_schema, 3)
 
         # UNPIN HERE (1)

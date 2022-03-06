@@ -139,7 +139,7 @@ class BasePage:
 	PageRange should also check has_capacity(), if this page is full, PageRange should create a new base/tail page
 	"""
 
-	def write(self, offset, record: Record):
+	def write(self, offset, record: Record, from_transaction=False):
 		assert len(record.columns) == self.num_user_columns
 		"""
 		Create new base page record
@@ -151,7 +151,8 @@ class BasePage:
 		# Internal columns
 		phys_pages.pages[0].set(offset, 0) # indirection, default = 0
 		phys_pages.pages[1].set(offset, record.rid) # rid, given by the PageRange
-		# phys_pages.pages[2].set(offset, int(time.time())) # time
+		if not from_transaction:
+			phys_pages.pages[2].set(offset, int(time.time())) # time
 		phys_pages.pages[3].set(offset, 0) # schema, default = 0
 
 #		print(offset, record.columns)

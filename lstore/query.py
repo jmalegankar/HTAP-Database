@@ -360,7 +360,7 @@ class Query:
             )
 
             prevTail = prevTailDict.get(rid, -1)
-            new_tail_rid = self.table.page_ranges[page_range_number].update(rid, *columns, prevTail=prevTail)
+            new_tail_rid = self.table.page_ranges[page_range_number].update(rid, *columns, prevTail=prevTail, from_transaction=True)
 
             success_rids = [rid, new_tail_rid]
 

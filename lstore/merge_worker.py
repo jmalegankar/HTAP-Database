@@ -91,11 +91,12 @@ class MergeWorkerThread(Thread):
                                 break
 
                             if indirection != 200000000:
-                                if indirection != tail_rid:
+                                if indirection < tail_rid:
                                     # current RID not committed
                                     latest_tps = 0
                                     merged_base_rid = set()
                                     merged_records = 0
+                                    # Skip the tail page because it has uncommited data
                                     break
 
                                 if latest_tps == 0:

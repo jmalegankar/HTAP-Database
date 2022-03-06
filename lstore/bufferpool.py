@@ -170,7 +170,7 @@ class Bufferpool:
 			pages = self.logical_pages[index].pages
 			self.latch.release()
 			return pages
-
+		self.latch.release()
 		try:
 			if os.path.isdir(self.path + '/' + path):
 				for physical_page_number in range(num_columns):
