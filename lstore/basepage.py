@@ -2,6 +2,7 @@ import time
 from lstore.page import Page
 from lstore.record import Record
 import lstore.bufferpool as bufferpool
+from threading import Lock
 
 class BasePage:
 
@@ -16,7 +17,7 @@ class BasePage:
 	"""
 
 	__slots__ = ('num_columns', 'num_user_columns', 'path', 'num_records', 'tps', 'num_updates',
-		'num_meta_columns', 'merging')
+		'num_meta_columns', 'latch')
 
 	def __init__(self, columns: int, path: str, num_records=0, tps=-1, num_updates=0):
 		assert columns > 0
@@ -32,7 +33,20 @@ class BasePage:
 		self.tps = tps # Tail-Page Sequence Number
 		self.num_updates = num_updates
 		self.num_meta_columns = 5 if tps == -1 else 4 # 5 is tail, 4 is base
-		self.merging = False
+		self.latch = Lock()
+
+	def __getstate__(self):
+		return (self.num_columns, self.num_user_columns, self.path, self.num_records, self.tps, self.num_updates, self.num_meta_columns)
+
+	def __setstate__(self, data):
+		self.num_columns = data[0]
+		self.num_user_columns = data[1]
+		self.path = data[2]
+		self.num_records = data[3]
+		self.tps = data[4]
+		self.num_updates = data[5]
+		self.num_meta_columns = data[6]
+		self.latch = Lock()
 
 	"""
 	Debug Only
@@ -64,7 +78,10 @@ class BasePage:
 	"""
 
 	def get(self, rec_num, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps, True, column, rec_num)
 
 	"""
 	*** WARNING: CALLERS MUST UNPIN THE PAGE ***
@@ -72,11 +89,17 @@ class BasePage:
 	"""
 
 	def get_bp(self, rec_num, column):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		return phys_pages.pages[column].get(rec_num), phys_pages
 
 	def get_bp_only(self):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		return phys_pages
 
 	"""
@@ -84,10 +107,39 @@ class BasePage:
 	"""
 
 	def set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num, value)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps, True, column, rec_num, value)
 
 	def get_and_set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num, value, True)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps, True, column, rec_num, value, True)
+
+	def set_and_save(self, rec_num, value, column):
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+
+		bufferpool.shared.create_folder(self.path)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
+		phys_pages.pages[column].set(rec_num, value)
+		for physical_page_number in range(self.num_columns):
+			if phys_pages.pages[physical_page_number].dirty:
+				read_version = 0 if physical_page_number < 4 else phys_pages.version
+				bufferpool.shared.write_page(
+					phys_pages.path,
+					physical_page_number,
+					phys_pages.pages[physical_page_number].data,
+					read_version
+				)
+
+		phys_pages.lock.acquire()
+		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
+
 
 	"""
 	Get multiple columns
@@ -96,7 +148,10 @@ class BasePage:
 	"""
 
 	def get_cols(self, rec_num, columns):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
 		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
@@ -108,7 +163,10 @@ class BasePage:
 	"""
 	
 	def get_cols_and_col(self, rec_num, columns, column):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
 		additional = phys_pages.pages[column].get(rec_num)
 		phys_pages.lock.acquire()
@@ -117,7 +175,10 @@ class BasePage:
 		return result, additional
 
 	def get_user_cols(self, rec_num):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result =  [phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i in range(self.num_user_columns)]
 		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
@@ -125,7 +186,10 @@ class BasePage:
 		return result
 
 	def get_all_cols(self, rec_num):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result =  [phys_pages.pages[i].get(rec_num) for i in range(self.num_columns)]
 		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page

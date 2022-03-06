@@ -24,7 +24,6 @@ class PageRange:
         self.page_range_path = table_name + '/page_range_' + str(range_number)
 
         self.num_records = 0
-        self.num_updates = 0 # If we decided to merge each page range
 
         bufferpool.shared.create_folder(self.page_range_path + '_b')
         bufferpool.shared.create_folder(self.page_range_path + '_t')
@@ -274,13 +273,14 @@ class PageRange:
         phys_pages.pinned -= 1
         phys_pages.lock.release()
 
+        self.arr_of_base_pages[base_page_number].latch.acquire()
         self.arr_of_base_pages[base_page_number].num_updates += 1
         # Merge each base page only
         if (self.arr_of_base_pages[base_page_number].num_records >= 511 and 
             self.arr_of_base_pages[base_page_number].num_updates >= MERGE_BASE_AFTER):
             # start merging
             self.merge(base_page_number)
-
+        self.arr_of_base_pages[base_page_number].latch.release()
         return new_tail_rid
 
     def open(self):

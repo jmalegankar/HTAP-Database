@@ -217,7 +217,7 @@ class Bufferpool:
 							if set_and_get:
 								return bufferpool_page.pages[column].get_and_set(rec_num, set_to)
 							bufferpool_page.pages[column].set(rec_num, set_to)
-							return
+							return True
 	
 						return bufferpool_page.pages[column].get(rec_num)
 	
@@ -229,16 +229,24 @@ class Bufferpool:
 				else:
 #					print('PAGE OUT DATED!!!', path, 'need:', version, 'has', bufferpool_page.version)
 					# base page is outdated, save first 4 columns
-					for physical_page_number in range(len(bufferpool_page.pages)):
+					for physical_page_number in range(4):
 						if bufferpool_page.pages[physical_page_number].dirty:
-							read_version = 0 if physical_page_number < 4 else bufferpool_page.version
 							bufferpool_page.pages[physical_page_number].close() # close physical page
 							self.write_page(
 								bufferpool_page.path,
 								physical_page_number,
-								bufferpool_page.pages[physical_page_number].data,
-								read_version
+								bufferpool_page.pages[physical_page_number].data
 							)
+					# for physical_page_number in range(len(bufferpool_page.pages)):
+					# 	if bufferpool_page.pages[physical_page_number].dirty:
+					# 		read_version = 0 if physical_page_number < 4 else bufferpool_page.version
+					# 		bufferpool_page.pages[physical_page_number].close() # close physical page
+					# 		self.write_page(
+					# 			bufferpool_page.path,
+					# 			physical_page_number,
+					# 			bufferpool_page.pages[physical_page_number].data,
+					# 			read_version
+					# 		)
 
 			# Page not in bufferpool
 			if next_bufferpool_index == -1:
@@ -324,7 +332,7 @@ class Bufferpool:
 						return self.logical_pages[next_bufferpool_index].pages[column].get_and_set(rec_num, set_to)
 
 					self.logical_pages[next_bufferpool_index].pages[column].set(rec_num, set_to)
-					return
+					return True
 
 				return self.logical_pages[next_bufferpool_index].pages[column].get(rec_num)
 
@@ -334,6 +342,12 @@ class Bufferpool:
 			return None # this will crash the program
 		finally:
 			self.latch.release()
+
+	def save_logical_pages(self, path, num_columns, version=0):
+		self.latch.acquire()
+		if version < 0:
+			version = 0
+		pass
 
 	"""
 	Closing database, save all dirty pages

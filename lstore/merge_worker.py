@@ -86,6 +86,7 @@ class MergeWorkerThread(Thread):
 
                             if timestamp == 0:
                                 # abort, the base page is not committed yet!
+                                # print('Abort due to invalid base page')
                                 merged_records = 0
                                 finished_merging = True
                                 break
@@ -97,6 +98,7 @@ class MergeWorkerThread(Thread):
                                     merged_base_rid = set()
                                     merged_records = 0
                                     # Skip the tail page because it has uncommited data
+                                    # print('Skip tail page')
                                     break
 
                                 if latest_tps == 0:
@@ -121,7 +123,9 @@ class MergeWorkerThread(Thread):
                         base_path, num_columns, merged_base_pages, latest_tps
                     )
 
+                    base_page_object.latch.acquire()
                     base_page_object.tps = latest_tps
+                    base_page_object.latch.release()
                     print('Merged success!')
 
                 self.queue.task_done()

@@ -43,7 +43,7 @@ for i in range(num_threads):
     transaction_workers[i].add_transaction(update_transactions[i])
 worker_keys = [ {} for t in transaction_workers ]
 
-for i in range(0, 1000):
+for i in range(0, 10000):
     key = 92106429 + i
     keys.append(key)
     i = i % num_threads
@@ -86,7 +86,8 @@ for transaction_worker in transaction_workers:
 for i in range(num_threads):
     if transaction_workers[i].result != len(transaction_workers[i].transactions):
         print('Something is wrong with transaction_workers', i)
-# time.sleep(1)
+grades_table._Table__merge()
+time.sleep(1)
 score = len(keys)
 for key in keys:
     correct = records[key]

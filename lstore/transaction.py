@@ -4,6 +4,7 @@ from lstore.index import Index
 from lstore.parser import *
 import lstore.transaction_id as transaction_id
 import time
+import lstore.bufferpool as bufferpool
 
 class Transaction:
 
@@ -112,9 +113,12 @@ class Transaction:
                 rid = rids[0]
                 base_page_range = get_page_range_number(rid)
                 base_page_number, base_offset = get_page_number_and_offset(rid)
-                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set_and_save(
                     base_offset, int(time.time()), 2
                 )
+
+                # TODO: save base page to disk
+                bufferpool.shared.close
             elif query_name == 'update':
                 # update indirection column
                 # find base page and set indirection to tail
@@ -123,17 +127,21 @@ class Transaction:
                 base_page_range = get_page_range_number(rid)
                 base_page_number, base_offset = get_page_number_and_offset(rid)
 
-                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set_and_save(
                     base_offset, rids[1], 0
                 )
+
+                # TODO: save base and tail page to disk
             elif query_name == 'delete':
                 # update indirection column to 'deleted'
                 rid = rids[0]
                 base_page_range = get_page_range_number(rid)
                 base_page_number, base_offset = get_page_number_and_offset(rid)
-                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set_and_save(
                     base_offset, 200000000, 0
                 )
+
+                # TODO: save base page to disk
         self.unlock_all_locks()
         return True
 
