@@ -84,6 +84,19 @@ class Transaction:
 
     def abort(self):
         # Delete success_rids and undo index
+        for query_table_rids in self.success_rids:
+            query_name = query_table_rids[0]
+            table = query_table_rids[1]
+            rids = query_table_rids[2]
+            if query_name == 'insert':
+                # set invalid
+                rid = rids[0]
+                base_page_range = get_page_range_number(rid)
+                base_page_number, base_offset = get_page_number_and_offset(rid)
+                table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set(
+                    base_offset, 200000000, 0
+                )
+
         self.unlock_all_locks()
         return False
 

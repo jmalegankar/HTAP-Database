@@ -315,11 +315,8 @@ class PageRange:
 
     # Merge each base page
     def merge(self, page_number):
-        pass
-        """
         if 0 <= page_number <= self.base_page_number:
             self.arr_of_base_pages[page_number].num_updates = 0
             self.merge_worker.queue.put(
                 (self.arr_of_base_pages[page_number], self.arr_of_tail_pages)
             )
-        """

@@ -123,21 +123,19 @@ class Bufferpool:
 #		print('merge_get_logical_pages', path, version)
 		in_bufferpool = False
 		pages = []
-
-		self.directory_lock.acquire()
+		self.latch.acquire()
 
 		if path in self.logical_pages_directory:
 			index = self.logical_pages_directory[path]
 			if self.logical_pages[index].version == version:
 				pages = self.logical_pages[index].pages
-				self.directory_lock.release()
+				self.latch.release()
 				return pages
 			else:
 				pages = self.logical_pages[index].pages[:4]
 				in_bufferpool = True
 #				print(path, 'is in bufferpool but not up to date!')
-
-		self.directory_lock.release()
+		self.latch.release()
 
 		try:
 			if os.path.isdir(self.path + '/' + path):
@@ -165,15 +163,13 @@ class Bufferpool:
 	def merge_get_tail_pages(self, path, num_columns): # -> [Page]
 		pages = []
 
-		self.directory_lock.acquire()
+		self.latch.acquire()
 
 		if path in self.logical_pages_directory:
 			index = self.logical_pages_directory[path]
 			pages = self.logical_pages[index].pages
-			self.directory_lock.release()
+			self.latch.release()
 			return pages
-
-		self.directory_lock.release()
 
 		try:
 			if os.path.isdir(self.path + '/' + path):
@@ -233,13 +229,15 @@ class Bufferpool:
 				else:
 #					print('PAGE OUT DATED!!!', path, 'need:', version, 'has', bufferpool_page.version)
 					# base page is outdated, save first 4 columns
-					for physical_page_number in range(4):
+					for physical_page_number in range(len(bufferpool_page.pages)):
 						if bufferpool_page.pages[physical_page_number].dirty:
+							read_version = 0 if physical_page_number < 4 else bufferpool_page.version
 							bufferpool_page.pages[physical_page_number].close() # close physical page
 							self.write_page(
 								bufferpool_page.path,
 								physical_page_number,
 								bufferpool_page.pages[physical_page_number].data,
+								read_version
 							)
 
 			# Page not in bufferpool
