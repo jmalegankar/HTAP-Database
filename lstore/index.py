@@ -94,11 +94,14 @@ class Index:
 
     def create_index(self, column_number):
         try:
+            self.table.index_latch.acquire()
             if column_number < 0 or column_number >= self.num_columns:
                 # out of index
+                self.table.index_latch.release()
                 return False
 
             if self.indexed_columns[column_number] == 1:
+                self.table.index_latch.release()
                 return False
 
             if column_number == self.key:
@@ -120,8 +123,10 @@ class Index:
 
                         self.indices[column_number][value].add(rid)
             self.indexed_columns[column_number] = 1
+            self.table.index_latch.release()
             return True
         except:
+            self.table.index_latch.release()
             return False
 
     """
@@ -129,13 +134,17 @@ class Index:
     """
 
     def drop_index(self, column_number):
+        self.table.index_latch.acquire()
         if column_number < 0 or column_number >= self.num_columns:
             # out of index
+            self.table.index_latch.release()
             return False
 
         if self.indexed_columns[column_number] == 0:
+            self.table.index_latch.release()
             return False
 
         self.indices[column_number] = None
         self.indexed_columns[column_number] = 0
+        self.table.index_latch.release()
         return True
