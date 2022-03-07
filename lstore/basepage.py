@@ -2,6 +2,7 @@ import time
 from lstore.page import Page
 from lstore.record import Record
 import lstore.bufferpool as bufferpool
+from threading import Lock
 
 class BasePage:
 
@@ -16,7 +17,7 @@ class BasePage:
 	"""
 
 	__slots__ = ('num_columns', 'num_user_columns', 'path', 'num_records', 'tps', 'num_updates',
-		'num_meta_columns', 'merging')
+		'num_meta_columns', 'latch')
 
 	def __init__(self, columns: int, path: str, num_records=0, tps=-1, num_updates=0):
 		assert columns > 0
@@ -32,7 +33,20 @@ class BasePage:
 		self.tps = tps # Tail-Page Sequence Number
 		self.num_updates = num_updates
 		self.num_meta_columns = 5 if tps == -1 else 4 # 5 is tail, 4 is base
-		self.merging = False
+		self.latch = Lock()
+
+	def __getstate__(self):
+		return (self.num_columns, self.num_user_columns, self.path, self.num_records, self.tps, self.num_updates, self.num_meta_columns)
+
+	def __setstate__(self, data):
+		self.num_columns = data[0]
+		self.num_user_columns = data[1]
+		self.path = data[2]
+		self.num_records = data[3]
+		self.tps = data[4]
+		self.num_updates = data[5]
+		self.num_meta_columns = data[6]
+		self.latch = Lock()
 
 	"""
 	Debug Only
@@ -64,7 +78,10 @@ class BasePage:
 	"""
 
 	def get(self, rec_num, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps, True, column, rec_num)
 
 	"""
 	*** WARNING: CALLERS MUST UNPIN THE PAGE ***
@@ -72,18 +89,57 @@ class BasePage:
 	"""
 
 	def get_bp(self, rec_num, column):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		return phys_pages.pages[column].get(rec_num), phys_pages
+
+	def get_bp_only(self):
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
+		return phys_pages
 
 	"""
 	Quicker setter to access page set
 	"""
 
 	def set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num, value)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps, True, column, rec_num, value)
 
 	def get_and_set(self, rec_num, value, column):
-		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps, True, column, rec_num, value, True)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		return bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps, True, column, rec_num, value, True)
+
+	def set_and_save(self, rec_num, value, column):
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+
+		bufferpool.shared.create_folder(self.path)
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
+		phys_pages.pages[column].set(rec_num, value)
+		for physical_page_number in range(self.num_columns):
+			if phys_pages.pages[physical_page_number].dirty:
+				read_version = 0 if physical_page_number < 4 else phys_pages.version
+				bufferpool.shared.write_page(
+					phys_pages.path,
+					physical_page_number,
+					phys_pages.pages[physical_page_number].data,
+					read_version
+				)
+
+		phys_pages.lock.acquire()
+		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
+
 
 	"""
 	Get multiple columns
@@ -92,9 +148,14 @@ class BasePage:
 	"""
 
 	def get_cols(self, rec_num, columns):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 		return result
 
 	"""
@@ -102,22 +163,37 @@ class BasePage:
 	"""
 	
 	def get_cols_and_col(self, rec_num, columns, column):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result = [None if v == 0 else phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i, v in enumerate(columns)]
 		additional = phys_pages.pages[column].get(rec_num)
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 		return result, additional
 
 	def get_user_cols(self, rec_num):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result =  [phys_pages.pages[self.num_meta_columns + i].get(rec_num) for i in range(self.num_user_columns)]
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 		return result
 
 	def get_all_cols(self, rec_num):
-		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		self.latch.acquire()
+		tps = self.tps
+		self.latch.release()
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		result =  [phys_pages.pages[i].get(rec_num) for i in range(self.num_columns)]
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 		return result
 
 	"""
@@ -127,8 +203,8 @@ class BasePage:
 	PageRange should also check has_capacity(), if this page is full, PageRange should create a new base/tail page
 	"""
 
-	def write(self, record: Record):
-		assert self.has_capacity() and len(record.columns) == self.num_user_columns
+	def write(self, offset, record: Record, from_transaction=False):
+		assert len(record.columns) == self.num_user_columns
 		"""
 		Create new base page record
 		Need to update page directory and map primary key -> RID
@@ -137,65 +213,74 @@ class BasePage:
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
 		# Internal columns
-		phys_pages.pages[0].write(0) # indirection, default = ?
-		phys_pages.pages[1].write(record.rid) # rid, given by the PageRange
-		phys_pages.pages[2].write(int(time.time())) # time
-		phys_pages.pages[3].write(0) # schema, default = 0
+		phys_pages.pages[0].set(offset, 0) # indirection, default = 0
+		phys_pages.pages[1].set(offset, record.rid) # rid, given by the PageRange
+		if not from_transaction:
+			phys_pages.pages[2].set(offset, int(time.time())) # time
+		phys_pages.pages[3].set(offset, 0) # schema, default = 0
+
+#		print(offset, record.columns)
 
 		# User columns
 		for idx in range(self.num_user_columns):
-			phys_pages.pages[idx + 4].write(record.columns[idx])
-
-		self.num_records += 1
+			phys_pages.pages[idx + 4].set(offset, record.columns[idx])
+		
+#		print(offset, record.columns)
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 
 
 	# takes in a record and writes it
 	# used to update meaning making a new tail record
 
-	def update(self, base_rid, record: Record):
+	def update(self, offset, base_rid, record: Record):
 		assert len(record.columns) == self.num_user_columns
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
-		phys_pages.pages[0].write(base_rid)
-		phys_pages.pages[1].write(record.rid)
-		phys_pages.pages[2].write(int(time.time()))
+		phys_pages.pages[0].set(offset, base_rid)
+		phys_pages.pages[1].set(offset, record.rid)
+		phys_pages.pages[2].set(offset, int(time.time()))
 
 		schema = 0
 		for idx in range(self.num_user_columns):
 			if record.columns[idx] is not None:
 				schema = (schema | (1 << self.num_user_columns-(idx+1)))
-				phys_pages.pages[idx + 5].write(record.columns[idx])
+				phys_pages.pages[idx + 5].set(offset, record.columns[idx])
 			else:
-				phys_pages.pages[idx + 5].write(0)
+				phys_pages.pages[idx + 5].set(offset, 0)
 
-		phys_pages.pages[3].write(schema)
-		phys_pages.pages[4].write(base_rid)
+		phys_pages.pages[3].set(offset, schema)
+		phys_pages.pages[4].set(offset, base_rid)
 
-		self.num_records += 1
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 		return schema
 
-	def tail_update(self, base_rid, previous_data, record: Record):
+	def tail_update(self, offset, base_rid, previous_data, record: Record):
 		assert len(record.columns) == self.num_user_columns
 
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, 0)
 
-		phys_pages.pages[0].write(previous_data[1]) # indirection is previous tail RID
-		phys_pages.pages[1].write(record.rid)
-		phys_pages.pages[2].write(int(time.time()))
+		phys_pages.pages[0].set(offset, previous_data[1]) # indirection is previous tail RID
+		phys_pages.pages[1].set(offset, record.rid)
+		phys_pages.pages[2].set(offset, int(time.time()))
 
 		schema = previous_data[3]
 		for index in range(self.num_user_columns):
 			if record.columns[index] is not None:
 				schema = (schema | (1 << self.num_user_columns - (index + 1)))
-				phys_pages.pages[index + 5].write(record.columns[index])
+				phys_pages.pages[index + 5].set(offset, record.columns[index])
 			else:
-				phys_pages.pages[index + 5].write(previous_data[index + 5])
+				phys_pages.pages[index + 5].set(offset, previous_data[index + 5])
 
-		phys_pages.pages[3].write(schema)
-		phys_pages.pages[4].write(base_rid)
-		self.num_records += 1
+		phys_pages.pages[3].set(offset, schema)
+		phys_pages.pages[4].set(offset, base_rid)
+		
+		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
+		phys_pages.lock.release()
 		return schema
+	

@@ -8,7 +8,7 @@ from threading import Lock
 
 class BufferpoolPage:
 
-	__slots__ = 'pinned', 'pages', 'last_access', 'access_count', 'path', 'version'
+	__slots__ = 'pinned', 'pages', 'last_access', 'access_count', 'path', 'version', 'lock'
 
 	def __init__(self, path, version):
 		self.pinned = 1
@@ -16,6 +16,7 @@ class BufferpoolPage:
 		self.last_access = time.time()
 		self.path = path
 		self.version = version
+		self.lock = Lock()
 
 	def __str__(self):
 		string = 'BufferpoolPage\n'
@@ -28,10 +29,23 @@ class BufferpoolPage:
 
 class Bufferpool:
 
-	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'directory_lock')
+	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'directory_lock', 'latch')
 
 	def __init__(self):
 		self.start()
+
+	def __str__(self):
+		string = 'Bufferpool\n'
+		string += 'Size: {}/{}\n'.format(self.bufferpool_size, BUFFERPOOL_SIZE)
+		for i in self.logical_pages:
+			if i is not None:
+				string += str(i)
+		string += 'Directory:\n'
+		string += str(self.logical_pages_directory)
+		return string
+	
+	def __repr__(self):
+		return self.__str__()
 
 	"""
 	Database().open() will call this function to start the bufferpool
@@ -43,6 +57,7 @@ class Bufferpool:
 		self.bufferpool_size = 0
 		self.logical_pages_directory = dict() # map logical base/tail pages to index
 		self.directory_lock = Lock()
+		self.latch = Lock()
 
 	"""
 	Set the database path
@@ -108,21 +123,19 @@ class Bufferpool:
 #		print('merge_get_logical_pages', path, version)
 		in_bufferpool = False
 		pages = []
-
-		self.directory_lock.acquire()
+		self.latch.acquire()
 
 		if path in self.logical_pages_directory:
 			index = self.logical_pages_directory[path]
 			if self.logical_pages[index].version == version:
 				pages = self.logical_pages[index].pages
-				self.directory_lock.release()
+				self.latch.release()
 				return pages
 			else:
 				pages = self.logical_pages[index].pages[:4]
 				in_bufferpool = True
 #				print(path, 'is in bufferpool but not up to date!')
-
-		self.directory_lock.release()
+		self.latch.release()
 
 		try:
 			if os.path.isdir(self.path + '/' + path):
@@ -150,16 +163,14 @@ class Bufferpool:
 	def merge_get_tail_pages(self, path, num_columns): # -> [Page]
 		pages = []
 
-		self.directory_lock.acquire()
+		self.latch.acquire()
 
 		if path in self.logical_pages_directory:
 			index = self.logical_pages_directory[path]
 			pages = self.logical_pages[index].pages
-			self.directory_lock.release()
+			self.latch.release()
 			return pages
-
-		self.directory_lock.release()
-
+		self.latch.release()
 		try:
 			if os.path.isdir(self.path + '/' + path):
 				for physical_page_number in range(num_columns):
@@ -188,6 +199,7 @@ class Bufferpool:
 	"""
 
 	def get_logical_pages(self, path, num_columns, version=0, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False): # -> BufferpoolPage
+		self.latch.acquire()
 		if version < 0:
 			version = 0
 		try:
@@ -205,14 +217,14 @@ class Bufferpool:
 							if set_and_get:
 								return bufferpool_page.pages[column].get_and_set(rec_num, set_to)
 							bufferpool_page.pages[column].set(rec_num, set_to)
-							return
+							return True
 	
 						return bufferpool_page.pages[column].get(rec_num)
 	
 					# Reader/writer wants to hold the bufferpool page
-					if bufferpool_page.pinned == 0:
-						# Pin the page
-						bufferpool_page.pinned += 1
+					bufferpool_page.lock.acquire()
+					bufferpool_page.pinned += 1
+					bufferpool_page.lock.release()
 					return bufferpool_page
 				else:
 #					print('PAGE OUT DATED!!!', path, 'need:', version, 'has', bufferpool_page.version)
@@ -223,8 +235,18 @@ class Bufferpool:
 							self.write_page(
 								bufferpool_page.path,
 								physical_page_number,
-								bufferpool_page.pages[physical_page_number].data,
+								bufferpool_page.pages[physical_page_number].data
 							)
+					# for physical_page_number in range(len(bufferpool_page.pages)):
+					# 	if bufferpool_page.pages[physical_page_number].dirty:
+					# 		read_version = 0 if physical_page_number < 4 else bufferpool_page.version
+					# 		bufferpool_page.pages[physical_page_number].close() # close physical page
+					# 		self.write_page(
+					# 			bufferpool_page.path,
+					# 			physical_page_number,
+					# 			bufferpool_page.pages[physical_page_number].data,
+					# 			read_version
+					# 		)
 
 			# Page not in bufferpool
 			if next_bufferpool_index == -1:
@@ -236,7 +258,10 @@ class Bufferpool:
 					has_free_space = False
 
 					for index, logical_page in enumerate(self.logical_pages):
-						if logical_page.pinned <= 0: # not pinned
+						logical_page.lock.acquire()
+						is_pinned = logical_page.pinned > 0
+						logical_page.lock.release()
+						if not is_pinned: # not pinned
 							has_free_space = True
 
 							# Using LRU, find a page to evict
@@ -298,14 +323,16 @@ class Bufferpool:
 
 			if atomic:
 				# Only need once, no need to pin!
+				self.logical_pages[next_bufferpool_index].lock.acquire()
 				self.logical_pages[next_bufferpool_index].pinned = 0
+				self.logical_pages[next_bufferpool_index].lock.release()
 
 				if set_to is not None:
 					if set_and_get:
 						return self.logical_pages[next_bufferpool_index].pages[column].get_and_set(rec_num, set_to)
 
 					self.logical_pages[next_bufferpool_index].pages[column].set(rec_num, set_to)
-					return
+					return True
 
 				return self.logical_pages[next_bufferpool_index].pages[column].get(rec_num)
 
@@ -313,6 +340,14 @@ class Bufferpool:
 			return self.logical_pages[next_bufferpool_index]
 		except ValueError as e:
 			return None # this will crash the program
+		finally:
+			self.latch.release()
+
+	def save_logical_pages(self, path, num_columns, version=0):
+		self.latch.acquire()
+		if version < 0:
+			version = 0
+		pass
 
 	"""
 	Closing database, save all dirty pages

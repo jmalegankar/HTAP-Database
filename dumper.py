@@ -10,7 +10,7 @@ while True:
 	if location == '':
 		_ = system('clear')
 		continue
-	
+	location = location.replace('\\', '')
 	if os.path.exists(location):
 		if location.endswith('.db'):
 			with open(location, 'rb') as in_f:

@@ -155,7 +155,7 @@ class ExtendedTester(unittest.TestCase):
 			record = [key, random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000)]
 			records.append(record)
 			self.assertTrue(query.insert(*record))
-			
+		print('A')
 		for i in index:
 			correct = records[i]
 			random_index = random.randint(0, 4)
@@ -169,7 +169,7 @@ class ExtendedTester(unittest.TestCase):
 				self.assertTrue(ok)
 			else:
 				self.assertEqual(query.select(correct[random_index], random_index, [1] * 5)[0].columns, correct)
-	
+		print('B')
 		random.shuffle(index)
 		for i in index:
 			primary_key = records[i][0]
@@ -188,7 +188,7 @@ class ExtendedTester(unittest.TestCase):
 						update[idx] = random.randint(-100000000, 100000000)
 					records[i][idx] = update[idx]
 			self.assertTrue(query.update(primary_key, *update))
-
+		
 			# test select after update
 			correct = records[i]
 			random_index = random.randint(0, 4)
@@ -202,7 +202,7 @@ class ExtendedTester(unittest.TestCase):
 				self.assertTrue(ok)
 			else:
 				self.assertEqual(query.select(correct[random_index], random_index, [1] * 5)[0].columns, correct)
-
+		print('C')
 		# test select ALL after update
 		random.shuffle(index)
 		for i in index:
@@ -223,7 +223,7 @@ class ExtendedTester(unittest.TestCase):
 		del db, table, query
 		
 		random.shuffle(index)
-		
+		print('D')
 		db = Database()
 		db.open('./database')
 		table = db.get_table('update')
@@ -243,7 +243,7 @@ class ExtendedTester(unittest.TestCase):
 			else:
 				self.assertEqual(query.select(correct[random_index], random_index, [1] * 5)[0].columns, correct)
 
-
+		print('E')
 		random.shuffle(index)
 		for i in index:
 			primary_key = records[i][0]
@@ -637,7 +637,7 @@ class ExtendedTester(unittest.TestCase):
 
 
 if __name__ == '__main__':
-	repeat = 10000
+	repeat = 3
 	for i in range(repeat):
 		print('{} test'.format(i))
 		if not unittest.main(exit=False, verbosity=2).result.wasSuccessful():

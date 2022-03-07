@@ -8,7 +8,6 @@ class Page:
         Next 2 bytes -> num_records
         Last 5 -> Not Used
         """
-        self.num_records = 0
         self.data = bytearray(4096)
         self.dirty = dirty
 
@@ -17,29 +16,15 @@ class Page:
     """
 
     def __str__(self):
-        string = 'Current size: {}/511 records\n'.format(self.num_records)
+        string = 'Physical Page\n'
         if self.dirty:
             string += 'DIRTY!\n'
-        string += '=' * 5 + '\n'
-        if self.num_records > 0:
-            for i in range(self.num_records):
-                string += '{}: {}\n'.format(i, self.get(i))
-        else:
-            string += 'Empty\n'
+        for i in range(511):
+            string += '{}: {}\n'.format(i, self.get(i))
         return string
 
     def __repr__(self):
         return self.__str__()
-
-    def has_capacity(self):
-        return self.num_records < 511
-
-    def write(self, value):
-        assert self.num_records < 511
-        self.data[self.num_records * 8 : self.num_records * 8 + 8] = \
-        value.to_bytes(8, 'big', signed=True)
-        self.num_records += 1
-        self.dirty = True # page is dirty
 
     def get(self, rec_num):
         assert 0 <= rec_num < 511
@@ -58,8 +43,7 @@ class Page:
         return old
     
     def close(self):
-        self.data[4088 : 4090] = self.num_records.to_bytes(2, 'big', signed=False)
+        pass
 
     def open(self, data):
         self.data = data
-        self.num_records = int.from_bytes(data[4088 : 4090], 'big', signed=False)
