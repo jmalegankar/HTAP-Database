@@ -118,13 +118,15 @@ class Transaction:
                 )
 
                 # TODO: save base page to disk
-                bufferpool.shared.close
+                table.page_ranges[base_page_range].close()
             elif query_name == 'update':
                 # update indirection column
                 # find base page and set indirection to tail
                 # also change page_range update to not update base tail
                 rid = rids[0]
+                tail_rid = rids[1]
                 base_page_range = get_page_range_number(rid)
+                tail_page_range = get_page_range_number(tail_rid)
                 base_page_number, base_offset = get_page_number_and_offset(rid)
 
                 table.page_ranges[base_page_range].arr_of_base_pages[base_page_number].set_and_save(
@@ -132,6 +134,8 @@ class Transaction:
                 )
 
                 # TODO: save base and tail page to disk
+                table.page_ranges[base_page_range].close()
+                table.page_ranges[tail_page_range].close()
             elif query_name == 'delete':
                 # update indirection column to 'deleted'
                 rid = rids[0]
@@ -142,6 +146,8 @@ class Transaction:
                 )
 
                 # TODO: save base page to disk
+                table.page_ranges[base_page_range].close()
+
         self.unlock_all_locks()
         return True
 
