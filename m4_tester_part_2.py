@@ -4,6 +4,7 @@ from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 import lstore.lock_manager as lock_manager
 from random import choice, randint, sample, seed
+import lstore.bufferpool as bufferpool
 import time
 
 import shutil

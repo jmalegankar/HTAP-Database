@@ -29,7 +29,7 @@ class BufferpoolPage:
 
 class Bufferpool:
 
-	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'directory_lock', 'latch')
+	__slots__ = ('path', 'logical_pages', 'bufferpool_size', 'logical_pages_directory', 'latch', 'files_latch')
 
 	def __init__(self):
 		self.start()
@@ -43,7 +43,7 @@ class Bufferpool:
 		string += 'Directory:\n'
 		string += str(self.logical_pages_directory)
 		return string
-	
+
 	def __repr__(self):
 		return self.__str__()
 
@@ -56,8 +56,8 @@ class Bufferpool:
 		self.logical_pages = [None] * BUFFERPOOL_SIZE # array of BufferpoolPage
 		self.bufferpool_size = 0
 		self.logical_pages_directory = dict() # map logical base/tail pages to index
-		self.directory_lock = Lock()
 		self.latch = Lock()
+		self.files_latch = dict()
 
 	"""
 	Set the database path
@@ -96,7 +96,6 @@ class Bufferpool:
 	def read_page(self, relative_path, physical_page_number, version=0):
 		with open(f'{self.path}/{relative_path}/{physical_page_number}-{version}.db', 'rb') as in_f:
 			return bytearray(in_f.read())
-		return None
 
 	"""
 	Write metadata to disk
@@ -113,7 +112,6 @@ class Bufferpool:
 	def read_metadata(self, relative_path):
 		with open(self.path + '/' + relative_path, 'rb', pickle.HIGHEST_PROTOCOL) as in_f:
 			return pickle.load(in_f)
-		return None
 
 	"""
 	Get logical BASE pages for our merge thread to read, won't affect bufferpool
@@ -170,7 +168,9 @@ class Bufferpool:
 			pages = self.logical_pages[index].pages
 			self.latch.release()
 			return pages
+
 		self.latch.release()
+
 		try:
 			if os.path.isdir(self.path + '/' + path):
 				for physical_page_number in range(num_columns):
@@ -199,15 +199,19 @@ class Bufferpool:
 	"""
 
 	def get_logical_pages(self, path, num_columns, version=0, atomic=False, column=None, rec_num=None, set_to=None, set_and_get=False): # -> BufferpoolPage
-		self.latch.acquire()
 		if version < 0:
 			version = 0
+		
+		self.latch.acquire()
+
 		try:
 			next_bufferpool_index = -1
+
 			if path in self.logical_pages_directory:
 				# Cache hit, already in bufferpool
 				next_bufferpool_index = self.logical_pages_directory[path]
 				bufferpool_page = self.logical_pages[next_bufferpool_index]
+
 				if bufferpool_page.version == version:
 					bufferpool_page.last_access = time.time()
 
@@ -252,7 +256,7 @@ class Bufferpool:
 			if next_bufferpool_index == -1:
 				next_bufferpool_index = self.bufferpool_size
 				if next_bufferpool_index == BUFFERPOOL_SIZE: # if bufferpool doesnt have free space anymore
-#					print('need to kick for', path)
+					# print('need to kick for', path)
 					oldest_page = self.logical_pages[0]
 					oldest_page_index = 0
 					has_free_space = False
@@ -286,13 +290,8 @@ class Bufferpool:
 								read_version
 							)
 
-					# kick out this logical page
-					self.directory_lock.acquire()
-
 					if oldest_page.path in self.logical_pages_directory:
 						del self.logical_pages_directory[oldest_page.path]
-
-					self.directory_lock.release()
 
 					# we have free space now
 					next_bufferpool_index = oldest_page_index
@@ -323,31 +322,25 @@ class Bufferpool:
 
 			if atomic:
 				# Only need once, no need to pin!
-				self.logical_pages[next_bufferpool_index].lock.acquire()
-				self.logical_pages[next_bufferpool_index].pinned = 0
-				self.logical_pages[next_bufferpool_index].lock.release()
+				new_logical_page.lock.acquire()
+				new_logical_page.pinned = 0
+				new_logical_page.lock.release()
 
 				if set_to is not None:
 					if set_and_get:
-						return self.logical_pages[next_bufferpool_index].pages[column].get_and_set(rec_num, set_to)
+						return new_logical_page.pages[column].get_and_set(rec_num, set_to)
 
-					self.logical_pages[next_bufferpool_index].pages[column].set(rec_num, set_to)
+					new_logical_page.pages[column].set(rec_num, set_to)
 					return True
 
-				return self.logical_pages[next_bufferpool_index].pages[column].get(rec_num)
+				return new_logical_page.pages[column].get(rec_num)
 
 			# Reader/writer wants to hold the bufferpool page
-			return self.logical_pages[next_bufferpool_index]
+			return new_logical_page
 		except ValueError as e:
 			return None # this will crash the program
 		finally:
 			self.latch.release()
-
-	def save_logical_pages(self, path, num_columns, version=0):
-		self.latch.acquire()
-		if version < 0:
-			version = 0
-		pass
 
 	"""
 	Closing database, save all dirty pages

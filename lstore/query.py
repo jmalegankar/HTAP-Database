@@ -260,6 +260,7 @@ class Query:
                 # S LOCK for RIDS
                 for rid in rids:
                     if not lock_manager.lock(transaction_id, rid):
+                        print(transaction_id, 'select rid not locked!')
                         return False, holding_locks, [], []
                     else:
                         holding_locks.append(rid)
@@ -283,6 +284,7 @@ class Query:
                 # S LOCK for RIDS
                 for rid in rids:
                     if not lock_manager.lock(transaction_id, rid):
+                        print(transaction_id, 'select rid not locked!')
                         return False, holding_locks, [], []
                     else:
                         holding_locks.append(rid)
@@ -344,6 +346,7 @@ class Query:
     def update_transaction(self, primary_key, *columns, transaction_id: int, prevTailDict):
         lock_manager = self.table.lock_manager
         holding_locks, success_rids, key_locks = [], [], []
+
         try:
             self.table.index_latch.acquire()
             rid = self.table.index.locate(self.table.key, primary_key)
@@ -354,6 +357,7 @@ class Query:
                 return False, [], [], []
             
             if not lock_manager.lock_key(transaction_id, primary_key):
+                print(transaction_id, 'old lock not locked!')
                 return False, [], [], []
             else:
                 key_locks.append(primary_key)
@@ -362,16 +366,19 @@ class Query:
                 self.table.index_latch.acquire()
                 if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
                     self.index_latch.release()
+                    print(transaction_id, 'dup key')
                     return False, holding_locks, success_rids, key_locks
                 self.table.index_latch.release()
 
                 if not lock_manager.lock_key(transaction_id, columns[self.table.key]):
+                    print(transaction_id, 'new key not locked')
                     return False, holding_locks, success_rids, key_locks
                 else:
                     key_locks.append(columns[self.table.key])
 
             # X LOCK for RID
             if not lock_manager.upgrade(transaction_id, rid):
+                print('rid not locked')
                 return False, holding_locks, success_rids, key_locks
             else:
                 holding_locks = [rid]

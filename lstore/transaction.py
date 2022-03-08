@@ -68,6 +68,7 @@ class Transaction:
 
                 if result is not False:
                     self.update_rid[success_rids[0]] = success_rids[1]
+
                 self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'delete':
                 result, holding_locks, success_rids, key_locks = query.__self__.delete_transaction(
@@ -151,7 +152,6 @@ class Transaction:
 
                 # TODO: save base page to disk
                 table.page_ranges[base_page_range].close()
-
         self.unlock_all_locks()
         return True
 
