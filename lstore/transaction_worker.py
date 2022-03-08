@@ -11,8 +11,12 @@ class TransactionWorker:
     """
     def __init__(self, transactions=[]):
         self.stats = []
-        # WE NEED DEEPCOPY HERE
-        self.transactions = deepcopy(transactions)
+
+        if transactions == []:
+            self.transactions = []
+        else:
+            self.transactions = transactions
+
         self.result = 0
         self.thread = None
 

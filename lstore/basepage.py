@@ -126,6 +126,7 @@ class BasePage:
 		bufferpool.shared.create_folder(self.path)
 		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, tps)
 		phys_pages.pages[column].set(rec_num, value)
+
 		for physical_page_number in range(self.num_columns):
 			if phys_pages.pages[physical_page_number].dirty:
 				read_version = 0 if physical_page_number < 4 else phys_pages.version

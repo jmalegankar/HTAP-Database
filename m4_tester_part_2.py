@@ -4,6 +4,7 @@ from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 import lstore.lock_manager as lock_manager
 from random import choice, randint, sample, seed
+import lstore.bufferpool as bufferpool
 import time
 
 import shutil
@@ -86,8 +87,11 @@ for transaction_worker in transaction_workers:
 for i in range(num_threads):
     if transaction_workers[i].result != len(transaction_workers[i].transactions):
         print('Something is wrong with transaction_workers', i)
-grades_table._Table__merge()
-time.sleep(1)
+
+# grades_table._Table__merge()
+# time.sleep(10)
+print('Select')
+
 score = len(keys)
 for key in keys:
     correct = records[key]
