@@ -87,8 +87,8 @@ for i in range(num_threads):
     if transaction_workers[i].result != len(transaction_workers[i].transactions):
         print('Something is wrong with transaction_workers', i)
 
-grades_table._Table__merge()
-time.sleep(10)
+# grades_table._Table__merge()
+# time.sleep(10)
 print('Select')
 
 score = len(keys)

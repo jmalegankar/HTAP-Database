@@ -18,7 +18,7 @@ records = {}
 
 number_of_records = 1000
 number_of_transactions = 100
-number_of_operations_per_record = 1
+number_of_operations_per_record = 10
 num_threads = 8
 
 keys = []
@@ -101,6 +101,8 @@ for key in keys:
     # else:
     #     print('primary key', key, 'ok!')
 print('Score', score, '/', len(keys))
+
+# print(grades_table.lock_manager)
 
 
 delete_transaction_workers = []

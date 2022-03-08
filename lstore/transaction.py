@@ -8,7 +8,7 @@ import lstore.bufferpool as bufferpool
 
 class Transaction:
 
-    __slots__ = 'queries', 'tid', 'success_rids', 'locks', 'update_rid'
+    __slots__ = 'queries', 'tid', 'success_rids', 'locks', 'update_rid', 'key_locks'
 
     """
     # Creates a transaction object.
@@ -23,6 +23,7 @@ class Transaction:
         self.success_rids = []
         # for unlock_all_locks
         self.locks = []
+        self.key_locks = []
         self.update_rid = {} # map rid 
 
     def __str__(self):
@@ -52,31 +53,34 @@ class Transaction:
             query_name = query.__name__
 
             if query_name == 'select':
-                result, holding_locks, success_rids = query.__self__.select_transaction(
+                result, holding_locks, success_rids, key_locks = query.__self__.select_transaction(
                     *args, transaction_id = self.tid
                 )
             elif query_name == 'insert':
-                result, holding_locks, success_rids = query.__self__.insert_transaction(
+                result, holding_locks, success_rids, key_locks = query.__self__.insert_transaction(
                     *args, transaction_id = self.tid
                 )
                 self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'update':
-                result, holding_locks, success_rids = query.__self__.update_transaction(
+                result, holding_locks, success_rids, key_locks = query.__self__.update_transaction(
                     *args, transaction_id = self.tid, prevTailDict = self.update_rid
                 )
-                self.update_rid[success_rids[0]] = success_rids[1]
+
+                if result is not False:
+                    self.update_rid[success_rids[0]] = success_rids[1]
                 self.success_rids += [[query_name, table, success_rids]]
             elif query_name == 'delete':
-                result, holding_locks, success_rids = query.__self__.delete_transaction(
+                result, holding_locks, success_rids, key_locks = query.__self__.delete_transaction(
                     *args, transaction_id = self.tid
                 )
                 self.success_rids += [(query_name, table, success_rids)]
             else:
-                result, holding_locks, success_rids = query.__self__.sum_transaction(
+                result, holding_locks, success_rids, key_locks = query.__self__.sum_transaction(
                     *args, transaction_id = self.tid
                 )
 
             self.locks += [(table, holding_locks)]
+            self.key_locks += [(table, key_locks)]
             # If the query has failed the transaction should abort
             if result == False:
                 print(self.tid, query_name, args, 'failed!')
@@ -158,4 +162,7 @@ class Transaction:
         for table_lock in self.locks:
             for lock in table_lock[1]:
                 table_lock[0].lock_manager.unlock(self.tid, lock)
+        for table_lock in self.key_locks:
+            for lock in table_lock[1]:
+                table_lock[0].lock_manager.unlock_key(self.tid, lock)
         pass
