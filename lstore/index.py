@@ -13,24 +13,22 @@ class Index:
     __slots__ = 'indices', 'indexed_columns', 'key', 'num_columns', 'table'
 
     def __init__(self, table, data=None):
-        if data is None:
-            self.key = table.key
-            self.indices = [None] *  table.num_columns
-            self.indexed_columns = [0] * table.num_columns
-        else:
-            self.key = data[0]
-            self.indices = []
-            for i in range(len(data[1])):
-                if i == self.key:
-                    # rebuild
-                    index = BPlusTree()
-                    for key_value in data[1][i]:
-                        index[key_value[0]] = key_value[1]
-                    self.indices.append(index)
-                else:
-                    self.indices.append(data[1][i])
-            self.indexed_columns = data[2]
-    
+        self.key = table.key
+        self.indices = [None] *  table.num_columns
+        self.indexed_columns = [0] * table.num_columns
+
+        if data is not None:
+            self.indexed_columns[self.key] = 1
+
+            """
+            data = [(key1, rid1), (key2, rid2), (key3, rid3), ...]
+            """
+
+            index = BPlusTree()
+            for key_value in data:
+                index[key_value[0]] = key_value[1]
+            self.indices[self.key] = index
+
         self.num_columns = table.num_columns
         self.table = table
 

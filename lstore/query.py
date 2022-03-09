@@ -141,6 +141,7 @@ class Query:
         holding_locks, success_rids, key_locks = [], [], []
 
         if len(columns) != self.table.num_columns:
+            print('column not match')
             return False, [], [], []
 
         try:
@@ -150,10 +151,12 @@ class Query:
             self.table.index_latch.release()
 
             if rid is not None:
+                print('primary key not unique')
                 # Primary key must be unique
                 return False, holding_locks, success_rids, key_locks
 
             if not self.table.lock_manager.lock_key(transaction_id, columns[self.table.key]):
+                print('key lock failed')
                 return False, holding_locks, success_rids, key_locks
             else:
                 key_locks = [columns[self.table.key]]
@@ -320,7 +323,7 @@ class Query:
             if columns[self.table.key] is not None:
                 self.table.index_latch.acquire()
                 if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
-                    self.index_latch.release()
+                    self.table.index_latch.release()
                     return False
                 self.table.index_latch.release()
 

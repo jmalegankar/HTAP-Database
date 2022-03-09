@@ -64,9 +64,9 @@ class ExtendedTester(unittest.TestCase):
 
 	"""
 	Create index for column 1, 2, 3, 4
-	Insert 10k objects
-	Select 10k objects in order using random colummn value
-	Select 10k objects randomly using random colummn value
+	Insert 1k objects
+	Select 1k objects in order using random colummn value
+	Select 1k objects randomly using random colummn value
 	Shutdown database and select 10k objects randomly using random colummn value
 	"""
 	def test_select_with_index(self):
@@ -78,10 +78,10 @@ class ExtendedTester(unittest.TestCase):
 		query = Query(table)
 
 		records = []
-		index = [i for i in range(10000)]
+		index = [i for i in range(1000)]
 		random.shuffle(index)
 
-		keys = random.sample(range(-100000000, 100000001), 10000)
+		keys = random.sample(range(-100000000, 100000001), 1000)
 
 		for key in keys:
 			record = [key, random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000)]
@@ -130,12 +130,12 @@ class ExtendedTester(unittest.TestCase):
 
 	"""
 	Create index for column 1, 2, 3, 4
-	Insert 10k objects
-	Select 10k objects randomly using random colummn value
-	Update 10k objects randomly and select it
-	Select 10k objects randomly using random column value
+	Insert 1k objects
+	Select 1k objects randomly using random colummn value
+	Update 1k objects randomly and select it
+	Select 1k objects randomly using random column value
 	Shutdown database and select 10k objects randomly using random colummn value
-	Update 10k objects randomly and select it
+	Update 1k objects randomly and select it
 	"""
 	def test_update(self):	
 		db = Database()
@@ -146,7 +146,7 @@ class ExtendedTester(unittest.TestCase):
 		query = Query(table)
 		
 		records = []
-		index = [i for i in range(10000)]
+		index = [i for i in range(1000)]
 		random.shuffle(index)
 		
 		keys = random.sample(range(-100000000, 100000001), 10000)
@@ -229,6 +229,10 @@ class ExtendedTester(unittest.TestCase):
 		table = db.get_table('update')
 		query = Query(table)
 		
+		for i in range(1, 5):
+			table.index.create_index(i)
+		print('X')
+		
 		for i in index:
 			correct = records[i]
 			random_index = random.randint(0, 4)
@@ -291,10 +295,10 @@ class ExtendedTester(unittest.TestCase):
 		query = Query(table)
 
 		records = []
-		index = [i for i in range(10000)]
+		index = [i for i in range(1000)]
 		random.shuffle(index)
 		
-		keys = random.sample(range(-100000000, 100000001), 10000)
+		keys = random.sample(range(-100000000, 100000001), 1000)
 		
 		for key in keys:
 			record = [key, random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000)]
@@ -304,7 +308,7 @@ class ExtendedTester(unittest.TestCase):
 		# randomly delete 2500 records
 		random.shuffle(index)
 		deleted_index = []
-		for i in range(2500):
+		for i in range(250):
 			x = index.pop(0)
 			correct = records[x]
 			deleted_index.append(x)
@@ -386,7 +390,7 @@ class ExtendedTester(unittest.TestCase):
 		# randomly delete 2500 records
 		random.shuffle(index)
 		deleted_index = []
-		for i in range(2500):
+		for i in range(250):
 			x = index.pop(0)
 			correct = records[x]
 			deleted_index.append(x)
@@ -475,10 +479,10 @@ class ExtendedTester(unittest.TestCase):
 		query = Query(table)
 		
 		records = []
-		index = [i for i in range(10000)]
+		index = [i for i in range(1000)]
 		random.shuffle(index)
 		
-		keys = random.sample(range(-100000000, 100000001), 10000)
+		keys = random.sample(range(-100000000, 100000001), 1000)
 		
 		for key in keys:
 			record = [key, random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000), random.randint(-100000000, 100000000)]
@@ -497,7 +501,7 @@ class ExtendedTester(unittest.TestCase):
 		
 		random.shuffle(index)
 		# random update
-		for i in range(random.randint(1000, 2000)):
+		for i in range(random.randint(100, 200)):
 			primary_key = records[i][0]
 			update = [None, None, None, None, None]
 			update_bit = [False, False, False, False, False]
@@ -527,7 +531,7 @@ class ExtendedTester(unittest.TestCase):
 		
 		random.shuffle(index)
 		# random delete
-		for i in range(random.randint(1000, 2000)):
+		for i in range(random.randint(100, 200)):
 			x = index.pop(0)
 			self.assertTrue(query.delete(records[x][0]))
 			
@@ -563,6 +567,7 @@ class ExtendedTester(unittest.TestCase):
 		random.shuffle(index)
 		# random delete
 		for i in range(random.randint(1000, 2000)):
+		for i in range(random.randint(100, 200)):
 			x = index.pop(0)
 			self.assertTrue(query.delete(records[x][0]))
 			
@@ -592,7 +597,7 @@ class ExtendedTester(unittest.TestCase):
 
 			table = db.get_table('table-{}'.format(i))
 			query = Query(table)
-			keys = random.sample(range(-100000000, 100000001), 10000)
+			keys = random.sample(range(-100000000, 100000001), 1000)
 			
 			for j in range(1000):
 				record = []

@@ -197,6 +197,13 @@ class BasePage:
 		phys_pages.lock.release()
 		return result
 
+	# To rebuild index, no lock, only call in the main thread
+	def get_metadata_cols(self, rec_num):
+		phys_pages = bufferpool.shared.get_logical_pages(self.path, self.num_columns, self.tps)
+		result = [phys_pages.pages[i].get(rec_num) for i in range(4)]
+		phys_pages.pinned -= 1
+		return result
+
 	"""
 	Write a record to the physical page
 	PageRange should call get_next_rec_num() to generate RID page offset
