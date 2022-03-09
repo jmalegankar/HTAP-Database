@@ -566,7 +566,6 @@ class ExtendedTester(unittest.TestCase):
 		
 		random.shuffle(index)
 		# random delete
-		for i in range(random.randint(1000, 2000)):
 		for i in range(random.randint(100, 200)):
 			x = index.pop(0)
 			self.assertTrue(query.delete(records[x][0]))
