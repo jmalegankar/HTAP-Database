@@ -1,16 +1,36 @@
-from lstore.table import Table, Record
+from lstore.table import Table
+from lstore.record import Record
 from lstore.index import Index
+from threading import Thread
+from copy import deepcopy
 
 class TransactionWorker:
 
     """
     # Creates a transaction worker object.
     """
-    def __init__(self, transactions = []):
+    def __init__(self, transactions=[]):
         self.stats = []
-        self.transactions = transactions
+
+        if transactions == []:
+            self.transactions = []
+        else:
+            self.transactions = transactions
+
         self.result = 0
-        pass
+        self.thread = None
+
+    def __str__(self):
+        string = 'Transaction Worker: {}\n'
+        string += '=' * 25 + '\n'
+        if len(self.transactions) == 0:
+            string += 'Worker has no transaction'
+        for transaction in self.transactions:
+            string += str(transaction) + '\n'
+        return string
+    
+    def __repr__(self):
+        return self.__str__()
 
     """
     Appends t to transactions
@@ -18,19 +38,21 @@ class TransactionWorker:
     def add_transaction(self, t):
         self.transactions.append(t)
 
+
     """
     Runs all transaction as a thread
     """
     def run(self):
-        pass
-        # here you need to create a thread and call __run
+        self.thread = Thread(target=self.__run, args=())
+        self.thread.start()
     
 
     """
     Waits for the worker to finish
     """
     def join(self):
-        pass
+        if self.thread is not None:
+            self.thread.join()
 
 
     def __run(self):
@@ -39,4 +61,4 @@ class TransactionWorker:
             self.stats.append(transaction.run())
         # stores the number of transactions that committed
         self.result = len(list(filter(lambda x: x, self.stats)))
-
+        

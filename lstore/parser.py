@@ -3,6 +3,7 @@ RID format: abbcccddd
 	a: page type
 		0: base page
 		1: tail page
+		2: invalid record (deleted)
 	bb: page range number
 	ccc: page number
 	ddd: physical page offset (rec_num)
@@ -23,5 +24,9 @@ def get_page_number(rid):
 def get_physical_page_offset(rid):
 	return parse_rid(rid, 0, 3) # starting from digit 0, length 3
 
-def create_rid(type, range_number, page_number, offset):
-	return type * (10 ** 8) + range_number * (10 ** 6) + page_number * (10 ** 3) + offset
+def create_rid(page_type, range_number, page_number, offset):
+	return page_type * (100000000) + range_number * (1000000) + page_number * (1000) + offset
+
+def get_page_number_and_offset(rid):
+	last_six = rid % 1000000
+	return (last_six // 1000, last_six % 1000)

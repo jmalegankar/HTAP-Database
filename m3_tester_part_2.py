@@ -4,8 +4,11 @@ from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 
 from random import choice, randint, sample, seed
+from time import process_time
 
 db = Database()
+db.open('./ECS165')
+
 # Getting the existing Grades table
 grades_table = db.get_table('Grades')
 
@@ -28,7 +31,7 @@ seed(3562901)
 for i in range(0, number_of_records):
     key = 92106429 + i
     keys.append(key)
-    records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
+    records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
 
 transaction_workers = []
 transactions = []
@@ -40,12 +43,7 @@ for i in range(num_threads):
     transaction_workers.append(TransactionWorker())
 
 
-
-for i in range(0, number_of_records):
-    key = 92106429 + i
-    keys.append(key)
-    records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
-    q = Query(grades_table)
+#transactions[0].add_query(query.select, grades_table, 92106501, 0, [1, 1, 1, 1, 1])
 
 
 # x update on every column
@@ -60,8 +58,9 @@ for j in range(number_of_operations_per_record):
             original = records[key].copy()
             # update our test directory
             records[key][i] = value
-            transactions[j % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
-            transactions[j % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
+            # key % number_of_transactions
+            transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
+            transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
 print("Update finished")
 
 
@@ -71,6 +70,8 @@ for i in range(number_of_transactions):
 
 
 
+start = process_time()
+
 # run transaction workers
 for i in range(num_threads):
     transaction_workers[i].run()
@@ -79,6 +80,8 @@ for i in range(num_threads):
 for i in range(num_threads):
     transaction_workers[i].join()
 
+
+print(process_time() - start, 's')
 
 score = len(keys)
 for key in keys:

@@ -236,15 +236,21 @@ class BPlusTree(object):
     def get_data_in_key_range(self, keyMin, keyMax, node):
         keys = []
         values = []
+        hasKey = False
         for i, key in enumerate(node.keys):
+            hasKey = True
             if keyMin <= key <= keyMax:
                 keys.append(key)
                 values.append(node.values[i])
-        if node.keys[-1] > keyMax:
-            next_node = None
+
+        if hasKey:
+            if node.keys[-1] > keyMax:
+                next_node = None
+            else:
+                next_node = node.next
+            return keys, values, next_node
         else:
-            next_node = node.next
-        return keys, values, next_node
+            return keys, values, None
     
     def change(self, key, value):
         """change the value
@@ -281,7 +287,7 @@ class BPlusTree(object):
             self.__setitem__(key, value, leaf)
             return True, leaf
         
-    def insert_index(self, key, values: list[Node]):
+    def insert_index(self, key, values):
         """For a parent and child node,
                     Insert the values from the child into the values of the parent."""
         parent = values[1].parent
