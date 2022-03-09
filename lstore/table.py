@@ -4,6 +4,7 @@ from lstore.config import PAGE_RANGE_SIZE
 import lstore.bufferpool as bufferpool
 from threading import Lock
 from lstore.lock_manager import LockManager
+from lstore.parser import get_page_number_and_offset
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
@@ -84,10 +85,45 @@ class Table:
         self.latch.release()
         return prn
 
+    def rebuild_index(self):
+        """
+        data_index = [(key1, rid1), (key2, rid2), (key3, rid3), ...]
+        """
+        data_index = []
+        key = self.key
+
+        append = data_index.append
+        for page_range_number, page_range in enumerate(self.page_ranges):
+            num_of_columns = page_range.num_of_columns
+            for page_number, base_page in enumerate(page_range.arr_of_base_pages):
+                tps = base_page.tps
+                for offset in range(base_page.num_records):
+                    indirection, rid, time, schema = base_page.get_metadata_cols(offset)
+                    primary_key = base_page.get(offset, key + 4)
+                    
+                    if time == 0:
+                        # need to perform delete
+                        base_page.set(offset, 200000000, 0)
+                        continue
+
+                    if indirection == 200000000:
+                        continue
+
+                    if indirection == 0 or indirection <= tps:
+                        append((primary_key, rid))
+                    else:
+                        if schema & (1 << num_of_columns - key - 1):
+                            tail_page_number, tail_offset = get_page_number_and_offset(indirection)
+                            new_primary_key = page_range.arr_of_tail_pages[tail_page_number].get(tail_offset, key + 5)
+                            append((new_primary_key, rid))
+                        else:
+                            append((primary_key, rid))
+
+        self.index = Index(self, data_index)
+
     def open(self):
         data = bufferpool.shared.read_metadata(self.name + '.metadata')
-        data_index = bufferpool.shared.read_metadata(self.name + '.index')
-        if data is not None and data_index is not None:
+        if data is not None:
             self.key = data[0]
             self.num_columns = data[1]
             self.page_range_number = data[2]
@@ -102,7 +138,8 @@ class Table:
                     lock_manager=self.lock_manager
                 ))
 
-            self.index = Index(self, data_index)
+            # Build index
+            self.rebuild_index()
             return True
 
         return False
@@ -113,8 +150,6 @@ class Table:
             self.num_columns,
             self.page_range_number,
         ))
-
-        bufferpool.shared.write_metadata(self.name + '.index', (self.index.close()))
 
         for page_range in self.page_ranges:
             page_range.close()

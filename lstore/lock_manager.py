@@ -74,7 +74,7 @@ class LockManagerDict(dict):
 
 class LockManager:
 
-	__slots__ = 'latch', 'locks', 'tid', 'key_latch', 'key_locks'
+	__slots__ = 'latch', 'locks', 'tid', 'key_latch'
 
 	def __init__(self):
 		self.start()
@@ -82,11 +82,9 @@ class LockManager:
 	def __str__(self):
 		string = 'LockManager\n'
 		string += '====================\n'
-		# for lock in self.locks:
-		# 	string += str(self.locks[lock]) + '\n'
+		for lock in self.locks:
+			string += str(self.locks[lock]) + '\n'
 		string += '=' * 10 + '\n'
-		for lock in self.key_locks:
-			string += str(self.key_locks[lock]) + '\n'
 		return string
 	
 	def __repr__(self):
@@ -100,7 +98,6 @@ class LockManager:
 		self.latch = Lock()
 		self.locks = LockManagerDict()
 		self.key_latch = Lock()
-		self.key_locks = LockManagerDict()
 
 	"""
 	TID locks BASE RID
@@ -113,16 +110,6 @@ class LockManager:
 		return result
 
 	"""
-	TID locks PRIMARY KEY
-	"""
-	
-	def lock_key(self, tid, key):
-		self.key_latch.acquire()
-		result = self.key_locks[key].upgrade(tid)
-		self.key_latch.release()
-		return result
-
-	"""
 	TID unlock BASE RID
 	"""
 
@@ -130,17 +117,6 @@ class LockManager:
 		self.latch.acquire()
 		result = self.locks[rid].unlock(tid)
 		self.latch.release()
-		return result
-
-	"""
-	TID locks PRIMARY KEY
-	"""
-
-	def unlock_key(self, tid, key):
-		# print(tid, 'unlocked', key)
-		self.key_latch.acquire()
-		result = self.key_locks[key].unlock(tid)
-		self.key_latch.release()
 		return result
 
 	"""

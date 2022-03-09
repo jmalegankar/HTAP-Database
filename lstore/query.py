@@ -54,9 +54,14 @@ class Query:
         else:
             return True
 
+    """
+    Delete
+    Return Bool, [holding_locks], [success_rids], [old_index]
+    """
+
     def delete_transaction(self, primary_key, transaction_id: int):
         lock_manager = self.table.lock_manager
-        holding_locks, success_rids, key_locks = [], [], []
+        holding_locks, success_rids, old_index = [], [], []
 
         try:
             self.table.index_latch.acquire()
@@ -67,26 +72,20 @@ class Query:
                 print('rid is none')
                 return False, [], [], []
 
-            if not lock_manager.lock_key(transaction_id, primary_key):
-                print('failed to lock key')
-                return False, [], [], []
-            else:
-                key_locks = [primary_key]
-
             page_range_number = get_page_range_number(rid)
 
             # X Lock for RID
             if not lock_manager.upgrade(transaction_id, rid):
                 print('failed to lock rid')
-                return False, holding_locks, success_rids, key_locks
+                return False, holding_locks, success_rids, old_index
             else:
                 holding_locks = [rid]
-    
+
             data = self.table.page_ranges[page_range_number].get_withRID(
                 rid,
                 self.table.index.indexed_columns
             )
-            
+
             # Need a way to indicate we deleted the value
             # self.table.page_ranges[page_range_number].delete_withRID(rid)
 
@@ -95,13 +94,16 @@ class Query:
             self.table.index_latch.acquire()
             for col, value in enumerate(data):
                 if value is not None:
+                    old_index.append([value, None])
                     self.table.index.remove(col, value, rid)
+                else:
+                    old_index.append([])
             self.table.index_latch.release()
-            
+
         except ValueError as e:
-            return False, holding_locks, success_rids, key_locks
+            return False, holding_locks, success_rids, old_index
         else:
-            return True, holding_locks, success_rids, key_locks
+            return True, holding_locks, success_rids, old_index
 
     """
     # Insert a record with specified columns
@@ -137,10 +139,16 @@ class Query:
         else:
             return True
 
+    """
+    Insert
+    Return Bool, [holding_locks], [success_rids], [old_index]
+    """
+
     def insert_transaction(self, *columns, transaction_id: int):
-        holding_locks, success_rids, key_locks = [], [], []
+        holding_locks, success_rids, old_index = [], [], []
 
         if len(columns) != self.table.num_columns:
+            print('column not match')
             return False, [], [], []
 
         try:
@@ -150,13 +158,9 @@ class Query:
             self.table.index_latch.release()
 
             if rid is not None:
+                print('primary key not unique')
                 # Primary key must be unique
-                return False, holding_locks, success_rids, key_locks
-
-            if not self.table.lock_manager.lock_key(transaction_id, columns[self.table.key]):
-                return False, holding_locks, success_rids, key_locks
-            else:
-                key_locks = [columns[self.table.key]]
+                return False, holding_locks, success_rids, old_index
 
             page_range_number = self.table.get_next_page_range_number()
 
@@ -169,14 +173,17 @@ class Query:
             self.table.index_latch.acquire()
             for column_index in range(self.table.num_columns):
                 if self.table.index.indexed_columns[column_index] == 1:
+                    old_index.append([None, columns[column_index]])
                     self.table.index.set(column_index, columns[column_index], rid)
+                else:
+                    old_index.append([])
             self.table.index_latch.release()
 
         except ValueError as e:
-            return False, holding_locks, success_rids, key_locks
+            return False, holding_locks, success_rids, old_index
         else:
             # print(columns[self.table.key], 'inserted')
-            return True, holding_locks, success_rids, key_locks
+            return True, holding_locks, success_rids, old_index
 
     """
     # Read a record with specified key
@@ -237,6 +244,11 @@ class Query:
         except ValueError as e:
             return False
 
+    """
+    Select
+    Return None/[Record], [holding_locks]
+    """
+
     def select_transaction(self, index_value, index_column, query_columns, transaction_id: int):
         lock_manager = self.table.lock_manager
         holding_locks = []
@@ -244,13 +256,13 @@ class Query:
         try:
             results = []
             if self.table.index.indexed_columns[index_column] == 1:
-                
+
                 self.table.index_latch.acquire()
                 if index_column == self.table.key:
                     rid = self.table.index.locate(index_column, index_value)
                     if rid is None:
                         self.table.index_latch.release()
-                        return [], [], [], []
+                        return [], []
                     else:
                         rids = [rid]
                 else:
@@ -261,11 +273,11 @@ class Query:
                 for rid in rids:
                     if not lock_manager.lock(transaction_id, rid):
                         print(transaction_id, 'select rid not locked!')
-                        return False, holding_locks, [], []
+                        return False, holding_locks
                     else:
                         holding_locks.append(rid)
                     page_range_number = get_page_range_number(rid)
-                    
+
                     results.append(
                         Record(
                             rid,
@@ -276,31 +288,31 @@ class Query:
             else:
                 temp_query_columns = query_columns
                 temp_query_columns[index_column] = 1
-                
+
                 self.table.index_latch.acquire()
                 rids = self.table.index.indices[self.table.key].values()
                 self.table.index_latch.release()
-                
+
                 # S LOCK for RIDS
                 for rid in rids:
                     if not lock_manager.lock(transaction_id, rid):
                         print(transaction_id, 'select rid not locked!')
-                        return False, holding_locks, [], []
+                        return False, holding_locks
                     else:
                         holding_locks.append(rid)
 
                     page_range_number = get_page_range_number(rid)
-                    
+
                     data = self.table.page_ranges[page_range_number].get_withRID(
                         rid, temp_query_columns
                     )
-                    
+
                     if data[index_column] == index_value:
                         results.append(Record(rid, self.table.key, data))
                         
-            return results, holding_locks, [], []
+            return results, holding_locks
         except ValueError as e:
-            return False, holding_locks, [], []
+            return False, holding_locks
 
     """
     # Update a record with specified key and columns
@@ -320,7 +332,7 @@ class Query:
             if columns[self.table.key] is not None:
                 self.table.index_latch.acquire()
                 if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
-                    self.index_latch.release()
+                    self.table.index_latch.release()
                     return False
                 self.table.index_latch.release()
 
@@ -343,9 +355,14 @@ class Query:
         else:
             return True
 
+    """
+    Update
+    Return Bool, [holding_locks], [success_rids], [old_index]
+    """
+
     def update_transaction(self, primary_key, *columns, transaction_id: int, prevTailDict):
         lock_manager = self.table.lock_manager
-        holding_locks, success_rids, key_locks = [], [], []
+        holding_locks, success_rids, old_index  = [], [], []
 
         try:
             self.table.index_latch.acquire()
@@ -356,30 +373,18 @@ class Query:
                 print('rid is None')
                 return False, [], [], []
             
-            if not lock_manager.lock_key(transaction_id, primary_key):
-                print(transaction_id, 'old lock not locked!')
-                return False, [], [], []
-            else:
-                key_locks.append(primary_key)
-            
             if columns[self.table.key] is not None:
                 self.table.index_latch.acquire()
                 if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
                     self.index_latch.release()
                     print(transaction_id, 'dup key')
-                    return False, holding_locks, success_rids, key_locks
+                    return False, holding_locks, success_rids, old_index
                 self.table.index_latch.release()
-
-                if not lock_manager.lock_key(transaction_id, columns[self.table.key]):
-                    print(transaction_id, 'new key not locked')
-                    return False, holding_locks, success_rids, key_locks
-                else:
-                    key_locks.append(columns[self.table.key])
 
             # X LOCK for RID
             if not lock_manager.upgrade(transaction_id, rid):
                 print('rid not locked')
-                return False, holding_locks, success_rids, key_locks
+                return False, holding_locks, success_rids, old_index
             else:
                 holding_locks = [rid]
 
@@ -397,13 +402,16 @@ class Query:
             self.table.index_latch.acquire()
             for col, value in enumerate(columns):
                 if value is not None and self.table.index.indexed_columns[col] == 1:
+                    old_index.append([data[col], value])
                     self.table.index.replace(col, data[col], value, rid)
+                else:
+                    old_index.append([])
             self.table.index_latch.release()
 
         except ValueError as e:
-            return False, holding_locks, success_rids, key_locks
+            return False, holding_locks, success_rids, old_index
         else:
-            return True, holding_locks, success_rids, key_locks
+            return True, holding_locks, success_rids, old_index
 
     """
     :param start_range: int         # Start of the key range to aggregate 
@@ -431,6 +439,11 @@ class Query:
         except ValueError as e:
             return False
 
+    """
+    Sum
+    Return int, [holding_locks]
+    """
+
     def sum_transaction(self, start_range, end_range, aggregate_column_index, transaction_id: int):
         lock_manager = self.table.lock_manager
         holding_locks = []
@@ -447,16 +460,16 @@ class Query:
             # S LOCK for RIDS
             for rid in rids:
                 if not lock_manager.lock(transaction_id, rid):
-                    return False, holding_locks, [], []
+                    return False, holding_locks
                 else:
                     holding_locks.append(rid)
 
                 page_range_number = get_page_range_number(rid)
                 total += self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)[aggregate_column_index]
 
-            return total, holding_locks, [], []
+            return total, holding_locks
         except ValueError as e:
-            return False, [], [], []
+            return total, holding_locks
 
     """
     incremenets one column of the record
@@ -476,14 +489,19 @@ class Query:
             return updated
         return False
 
+    """
+    Incremenets one column of the record
+    Return Bool, [holding_locks]
+    """
+
     def increment_transaction(self, key, column, transaction_id: int):
-        result, holding_locks, success_rids, key_locks = self.select_transaction(key, self.table.key, [1] * self.table.num_columns)[0]
+        result, holding_locks = self.select_transaction(key, self.table.key, [1] * self.table.num_columns)[0]
         if result is not False:
             updated_columns = [None] * self.table.num_columns
             updated_columns[column] = result[column] + 1
             updated = self.update(key, *updated_columns, transaction_id=transaction_id)
-            return updated
-        return False, holding_locks, success_rids, key_locks
+            return updated, holding_locks
+        return False, holding_locks
 
     """
     Simple SQL for debug
