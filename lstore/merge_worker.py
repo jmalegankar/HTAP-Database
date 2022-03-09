@@ -71,8 +71,6 @@ class MergeWorkerThread(Thread):
                         schema = tail_page[3].get(i)
                         base_rid = tail_page[4].get(i)
 
-                        
-
                         if tail_rid <= base_tps:
                             # finished merging
                             finished_merging = True

@@ -62,6 +62,7 @@ class Transaction:
     def run(self):
         for query, table, args in self.queries:
             query_name = query.__name__
+#           print(self.tid, 'will', query_name, 'with', args)
 
             if query_name == 'select':
                 result, holding_locks = query.__self__.select_transaction(
@@ -112,7 +113,7 @@ class Transaction:
         return self.commit()
 
 
-    def add_to_index(self, table_name, base_rid,old_index):
+    def add_to_index(self, base_rid, table_name, old_index):
         record = self.query_index.get((table_name, base_rid))
         if record is None:
             self.query_index[(table_name, base_rid)] = old_index
@@ -124,7 +125,7 @@ class Transaction:
                     else:
                         record[idx][1] = column_info[1]
             self.query_index[(table_name, base_rid)] = record
-                       
+
 
     def abort(self):
         # Delete success_rids and undo index
@@ -167,8 +168,8 @@ class Transaction:
                             table.index.set(idx, old_value, rid)
 
                 table.index_latch.release()
-        except:
-            print('Undo_index failed')
+        except Exception as e:
+            print('Undo_index failed', e)
 
 
     def commit(self):

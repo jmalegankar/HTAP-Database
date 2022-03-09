@@ -26,7 +26,13 @@ class Database():
         for table in self.tables.values():
             table.close()
 
-        self.merge_worker.queue.join()
+
+        try:
+            while True:
+                self.merge_worker.queue.get_nowait()
+                self.merge_worker.queue.task_done()
+        except:
+            pass
 
         bufferpool.shared.close()
 
