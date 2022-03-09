@@ -31,7 +31,6 @@ for i in range(0, number_of_records):
     key = 92106429 + i
     keys.append(key)
     records[key] = [key, randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20), randint(i * 20, (i + 1) * 20)]
-#   print(records[key])
 
 transaction_workers = []
 transactions = []
@@ -43,11 +42,8 @@ for i in range(num_threads):
     transaction_workers.append(TransactionWorker())
 
 
+#transactions[0].add_query(query.select, grades_table, 92106501, 0, [1, 1, 1, 1, 1])
 
-
-
-transactions[1].add_query(query.update, grades_table, 92107428, *[None, None, 0, 0, 0])
-#transactions[1].add_query(query.update, grades_table, 92107428, *[None, None, 0, 0, 0])
 
 # x update on every column
 for j in range(number_of_operations_per_record):
@@ -61,6 +57,7 @@ for j in range(number_of_operations_per_record):
             original = records[key].copy()
             # update our test directory
             records[key][i] = value
+            # key % number_of_transactions
             transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
             transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
 print("Update finished")
@@ -80,10 +77,6 @@ for i in range(num_threads):
 for i in range(num_threads):
     transaction_workers[i].join()
 
-for i in range(num_threads):
-    # print(transaction_workers[i].result, 'ok, we have',  len(transaction_workers[i].transactions))
-    if transaction_workers[i].result != len(transaction_workers[i].transactions):
-        print('[A] Something is wrong with transaction_workers', i)
 
 score = len(keys)
 for key in keys:
