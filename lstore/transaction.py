@@ -113,17 +113,17 @@ class Transaction:
 
 
     def add_to_index(self, table_name, base_rid,old_index):
-            record = self.query_index.get((table_name, base_rid))
-            if record is None:
-                self.query_index[(table_name, base_rid)] = old_index
-            else:
-                for idx, column_info in enumerate(old_index):
-                    if column_info:
-                        if not record[idx]:
-                            record[idx] = column_info
-                        else:
-                            record[idx][1] = column_info[1]
-                self.query_index[(table_name, base_rid)] = record
+        record = self.query_index.get((table_name, base_rid))
+        if record is None:
+            self.query_index[(table_name, base_rid)] = old_index
+        else:
+            for idx, column_info in enumerate(old_index):
+                if column_info:
+                    if not record[idx]:
+                        record[idx] = column_info
+                    else:
+                        record[idx][1] = column_info[1]
+            self.query_index[(table_name, base_rid)] = record
                        
 
     def abort(self):
@@ -147,7 +147,28 @@ class Transaction:
 
 
     def undo_index(self):
-        pass
+        # abort, need to undo the index
+        try:
+            for table_rid, record in self.query_index.items():
+                table_name, rid = table_rid
+                table = self.tables[table_name]
+
+                table.index_latch.acquire()
+                for idx, column_info in enumerate(record):
+                    if column_info:
+                        # need to update back
+                        old_value, new_value = column_info[0], column_info[1]
+
+                        if new_value is not None:
+                            # remove new value from index
+                            table.index.remove(idx, new_value, rid)
+            
+                        if old_value is not None:
+                            table.index.set(idx, old_value, rid)
+
+                table.index_latch.release()
+        except:
+            print('Undo_index failed')
 
 
     def commit(self):
@@ -203,6 +224,9 @@ class Transaction:
     Unlock all holding locks
     """
     def unlock_all_locks(self):
-        for tablename_lock in self.locks:
-            for lock in tablename_lock[1]:
-                self.tables[tablename_lock[0]].lock_manager.unlock(self.tid, lock)
+        try:
+            for tablename_lock in self.locks:
+                for lock in tablename_lock[1]:
+                    self.tables[tablename_lock[0]].lock_manager.unlock(self.tid, lock)
+        except:
+            print('Unlock all locks failed')
