@@ -4,6 +4,7 @@ from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 
 from random import choice, randint, sample, seed
+from time import process_time
 
 db = Database()
 db.open('./ECS165')
@@ -69,6 +70,8 @@ for i in range(number_of_transactions):
 
 
 
+start = process_time()
+
 # run transaction workers
 for i in range(num_threads):
     transaction_workers[i].run()
@@ -77,6 +80,8 @@ for i in range(num_threads):
 for i in range(num_threads):
     transaction_workers[i].join()
 
+
+print(process_time() - start, 's')
 
 score = len(keys)
 for key in keys:

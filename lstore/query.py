@@ -376,7 +376,7 @@ class Query:
             if columns[self.table.key] is not None:
                 self.table.index_latch.acquire()
                 if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
-                    self.index_latch.release()
+                    self.table.index_latch.release()
                     print(transaction_id, 'dup key')
                     return False, holding_locks, success_rids, old_index
                 self.table.index_latch.release()
