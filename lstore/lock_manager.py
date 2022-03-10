@@ -97,7 +97,6 @@ class LockManager:
 	def start(self):
 		self.latch = Lock()
 		self.locks = LockManagerDict()
-		self.key_latch = Lock()
 
 	"""
 	TID locks BASE RID
