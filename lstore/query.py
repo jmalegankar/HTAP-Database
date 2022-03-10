@@ -49,7 +49,7 @@ class Query:
                     self.table.index.remove(col, value, rid)
             self.table.index_latch.release()
 
-        except ValueError as e:
+        except Exception as e:
             return False
         else:
             return True
@@ -69,14 +69,12 @@ class Query:
             self.table.index_latch.release()
 
             if rid is None:
-                print('rid is none')
                 return False, [], [], []
 
             page_range_number = get_page_range_number(rid)
 
             # X Lock for RID
             if not lock_manager.upgrade(transaction_id, rid):
-                print('failed to lock rid')
                 return False, holding_locks, success_rids, old_index
             else:
                 holding_locks = [rid]
@@ -100,7 +98,7 @@ class Query:
                     old_index.append([])
             self.table.index_latch.release()
 
-        except ValueError as e:
+        except Exception as e:
             return False, holding_locks, success_rids, old_index
         else:
             return True, holding_locks, success_rids, old_index
@@ -134,7 +132,7 @@ class Query:
                     self.table.index.set(column_index, columns[column_index], rid)
             self.table.index_latch.release()
 
-        except ValueError as e:
+        except Exception as e:
             return False
         else:
             return True
@@ -148,7 +146,6 @@ class Query:
         holding_locks, success_rids, old_index = [], [], []
 
         if len(columns) != self.table.num_columns:
-            print('column not match')
             return False, [], [], []
 
         try:
@@ -158,7 +155,6 @@ class Query:
             self.table.index_latch.release()
 
             if rid is not None:
-                print('primary key not unique')
                 # Primary key must be unique
                 return False, holding_locks, success_rids, old_index
 
@@ -179,10 +175,9 @@ class Query:
                     old_index.append([])
             self.table.index_latch.release()
 
-        except ValueError as e:
+        except Exception as e:
             return False, holding_locks, success_rids, old_index
         else:
-            # print(columns[self.table.key], 'inserted')
             return True, holding_locks, success_rids, old_index
 
     """
@@ -241,7 +236,7 @@ class Query:
                         results.append(Record(rid, self.table.key, data))
 
             return results
-        except ValueError as e:
+        except Exception as e:
             return False
 
     """
@@ -272,7 +267,6 @@ class Query:
                 # S LOCK for RIDS
                 for rid in rids:
                     if not lock_manager.lock(transaction_id, rid):
-                        print(transaction_id, 'select rid not locked!')
                         return False, holding_locks
                     else:
                         holding_locks.append(rid)
@@ -296,7 +290,6 @@ class Query:
                 # S LOCK for RIDS
                 for rid in rids:
                     if not lock_manager.lock(transaction_id, rid):
-                        print(transaction_id, 'select rid not locked!')
                         return False, holding_locks
                     else:
                         holding_locks.append(rid)
@@ -311,7 +304,7 @@ class Query:
                         results.append(Record(rid, self.table.key, data))
                         
             return results, holding_locks
-        except ValueError as e:
+        except Exception as e:
             return False, holding_locks
 
     """
@@ -350,7 +343,7 @@ class Query:
                     self.table.index.replace(col, data[col], value, rid)
             self.table.index_latch.release()
 
-        except ValueError as e:
+        except Exception as e:
             return False
         else:
             return True
@@ -370,20 +363,17 @@ class Query:
             self.table.index_latch.release()
             
             if rid is None:
-                print('rid is None')
                 return False, [], [], []
             
             if columns[self.table.key] is not None:
                 self.table.index_latch.acquire()
                 if self.table.index.locate(self.table.key, columns[self.table.key]) is not None:
                     self.table.index_latch.release()
-                    print(transaction_id, 'dup key')
                     return False, holding_locks, success_rids, old_index
                 self.table.index_latch.release()
 
             # X LOCK for RID
             if not lock_manager.upgrade(transaction_id, rid):
-                print('rid not locked')
                 return False, holding_locks, success_rids, old_index
             else:
                 holding_locks = [rid]
@@ -408,7 +398,7 @@ class Query:
                     old_index.append([])
             self.table.index_latch.release()
 
-        except ValueError as e:
+        except Exception as e:
             return False, holding_locks, success_rids, old_index
         else:
             return True, holding_locks, success_rids, old_index
@@ -436,7 +426,7 @@ class Query:
                 total += self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)[aggregate_column_index]
 
             return total
-        except ValueError as e:
+        except Exception as e:
             return False
 
     """
@@ -468,7 +458,7 @@ class Query:
                 total += self.table.page_ranges[page_range_number].get_withRID(rid, query_columns)[aggregate_column_index]
 
             return total, holding_locks
-        except ValueError as e:
+        except Exception as e:
             return total, holding_locks
 
     """
@@ -567,4 +557,3 @@ class Query:
         except:
 
             return False
-        

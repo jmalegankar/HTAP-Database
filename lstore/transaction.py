@@ -107,7 +107,6 @@ class Transaction:
 
             if result == False:
                 # If the query has failed the transaction should abort
-                print(self.tid, query_name, args, 'failed!')
                 return self.abort()
         # No issue after all transactions, commit!
         return self.commit()
@@ -169,7 +168,7 @@ class Transaction:
 
                 table.index_latch.release()
         except Exception as e:
-            print('Undo_index failed', e)
+            pass
 
 
     def commit(self):
@@ -230,4 +229,4 @@ class Transaction:
                 for lock in tablename_lock[1]:
                     self.tables[tablename_lock[0]].lock_manager.unlock(self.tid, lock)
         except:
-            print('Unlock all locks failed')
+            pass
