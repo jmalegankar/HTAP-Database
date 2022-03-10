@@ -74,7 +74,7 @@ class LockManagerDict(dict):
 
 class LockManager:
 
-	__slots__ = 'latch', 'locks', 'tid', 'key_latch'
+	__slots__ = 'latch', 'locks', 'tid'
 
 	def __init__(self):
 		self.start()
