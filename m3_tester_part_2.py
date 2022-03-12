@@ -59,8 +59,9 @@ for j in range(number_of_operations_per_record):
             # update our test directory
             records[key][i] = value
             # key % number_of_transactions
-            transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
             transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
+            transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
+#           transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
 print("Update finished")
 
 
@@ -81,7 +82,7 @@ for i in range(num_threads):
     transaction_workers[i].join()
 
 
-print(process_time() - start, 's')
+#print(process_time() - start, 's')
 
 score = len(keys)
 for key in keys:
