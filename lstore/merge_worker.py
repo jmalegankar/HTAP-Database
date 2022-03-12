@@ -111,7 +111,7 @@ class MergeWorkerThread(Thread):
                         # finished merging
                         break
 
-                if merged_records > 0:
+                if merged_records > 0 and latest_tps > 0:
                     # need to save the pages
                     bufferpool.shared.merge_save_base_pages(
                         base_path, num_columns, merged_base_pages, latest_tps
