@@ -227,13 +227,10 @@ class BasePage:
 			phys_pages.pages[2].set(offset, int(time.time())) # time
 		phys_pages.pages[3].set(offset, 0) # schema, default = 0
 
-#		print(offset, record.columns)
-
 		# User columns
 		for idx in range(self.num_user_columns):
 			phys_pages.pages[idx + 4].set(offset, record.columns[idx])
 		
-#		print(offset, record.columns)
 		phys_pages.lock.acquire()
 		phys_pages.pinned -= 1 # Finished using, unpin the page
 		phys_pages.lock.release()

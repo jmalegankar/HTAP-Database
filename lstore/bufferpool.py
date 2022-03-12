@@ -118,7 +118,6 @@ class Bufferpool:
 	"""
 
 	def merge_get_base_pages(self, path, num_columns, version=0): # -> [Page]
-#		print('merge_get_logical_pages', path, version)
 		in_bufferpool = False
 		pages = []
 		self.latch.acquire()
@@ -132,7 +131,6 @@ class Bufferpool:
 			else:
 				pages = self.logical_pages[index].pages[:4]
 				in_bufferpool = True
-#				print(path, 'is in bufferpool but not up to date!')
 		self.latch.release()
 
 		try:
@@ -231,7 +229,6 @@ class Bufferpool:
 					bufferpool_page.lock.release()
 					return bufferpool_page
 				else:
-#					print('PAGE OUT DATED!!!', path, 'need:', version, 'has', bufferpool_page.version)
 					# base page is outdated, save first 4 columns
 					for physical_page_number in range(4):
 						if bufferpool_page.pages[physical_page_number].dirty:
@@ -241,22 +238,11 @@ class Bufferpool:
 								physical_page_number,
 								bufferpool_page.pages[physical_page_number].data
 							)
-					# for physical_page_number in range(len(bufferpool_page.pages)):
-					# 	if bufferpool_page.pages[physical_page_number].dirty:
-					# 		read_version = 0 if physical_page_number < 4 else bufferpool_page.version
-					# 		bufferpool_page.pages[physical_page_number].close() # close physical page
-					# 		self.write_page(
-					# 			bufferpool_page.path,
-					# 			physical_page_number,
-					# 			bufferpool_page.pages[physical_page_number].data,
-					# 			read_version
-					# 		)
 
 			# Page not in bufferpool
 			if next_bufferpool_index == -1:
 				next_bufferpool_index = self.bufferpool_size
 				if next_bufferpool_index == BUFFERPOOL_SIZE: # if bufferpool doesnt have free space anymore
-					# print('need to kick for', path)
 					oldest_page = self.logical_pages[0]
 					oldest_page_index = 0
 					has_free_space = False

@@ -24,7 +24,6 @@ class MergeWorkerThread(Thread):
                 base_path = base_page_object.path
                 num_columns = base_page_object.num_columns
                 num_user_columns = base_page_object.num_user_columns
-#               print('merging', base_path, 'with current tps:', base_tps)
 
                 # Array of physical pages (Base [Page])
                 base_pages = bufferpool.shared.merge_get_base_pages(
@@ -32,7 +31,6 @@ class MergeWorkerThread(Thread):
                 )
 
                 if base_pages is None:
-                    print('Base_page invalid', base_path, base_tps)
                     # bufferpool doesn't have the page, something is wrong
                     self.queue.task_done()
                     continue
@@ -84,7 +82,6 @@ class MergeWorkerThread(Thread):
 
                             if timestamp == 0:
                                 # abort, the base page is not committed yet!
-                                # print('Abort due to invalid base page')
                                 merged_records = 0
                                 finished_merging = True
                                 break
@@ -96,7 +93,6 @@ class MergeWorkerThread(Thread):
                                     merged_base_rid = set()
                                     merged_records = 0
                                     # Skip the tail page because it has uncommited data
-                                    # print('Skip tail page')
                                     break
 
                                 if latest_tps == 0:
@@ -115,7 +111,7 @@ class MergeWorkerThread(Thread):
                         # finished merging
                         break
 
-                if merged_records > 0:
+                if merged_records > 0 and latest_tps > 0:
                     # need to save the pages
                     bufferpool.shared.merge_save_base_pages(
                         base_path, num_columns, merged_base_pages, latest_tps
@@ -124,11 +120,9 @@ class MergeWorkerThread(Thread):
                     base_page_object.latch.acquire()
                     base_page_object.tps = latest_tps
                     base_page_object.latch.release()
-                    print('Merged success!')
 
                 self.queue.task_done()
-            except ValueError as e:
-                print(e)
+            except Exception as e:
                 # something is wrong
                 self.queue.task_done()
 

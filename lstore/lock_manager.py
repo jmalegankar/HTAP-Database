@@ -74,7 +74,7 @@ class LockManagerDict(dict):
 
 class LockManager:
 
-	__slots__ = 'latch', 'locks', 'tid', 'key_latch'
+	__slots__ = 'latch', 'locks', 'tid'
 
 	def __init__(self):
 		self.start()
@@ -97,7 +97,6 @@ class LockManager:
 	def start(self):
 		self.latch = Lock()
 		self.locks = LockManagerDict()
-		self.key_latch = Lock()
 
 	"""
 	TID locks BASE RID
